@@ -4,86 +4,251 @@ import com.example.data.model.CorporateCategory
 import com.example.data.model.CorporateNews
 import com.example.data.model.NewsImpact
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 class CorporateNewsApi {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .followRedirects(true)
         .build()
 
     suspend fun fetchCorporateNews(): List<CorporateNews> = withContext(Dispatchers.IO) {
-        // First try to fetch any real live headlines from economic/market RSS or API
-        val dynamicNews = try {
-            fetchLiveMarketDisclosures()
-        } catch (_: Exception) {
-            emptyList()
+        // Fetch concurrently from live Mubasher/EGX and Investing.com feeds
+        val liveResults = coroutineScope {
+            val egxDeferred = async { fetchMubasherAndEgxLiveNews() }
+            val investingDeferred = async { fetchInvestingComLiveNews() }
+
+            val list = mutableListOf<CorporateNews>()
+            try {
+                list.addAll(egxDeferred.await())
+            } catch (_: Exception) {}
+
+            try {
+                list.addAll(investingDeferred.await())
+            } catch (_: Exception) {}
+
+            list
         }
 
-        // Combine live news with our comprehensive, verified EGX corporate actions ledger
-        val combined = (dynamicNews + getCuratedCorporateActions()).distinctBy { it.id }
-        combined.sortedByDescending { it.date }
+        // If online fetch returned items, prioritize them at the top!
+        val combined = (liveResults + getCuratedCorporateActions())
+            .distinctBy { it.title.trim().take(40) }
+
+        combined
     }
 
-    private fun fetchLiveMarketDisclosures(): List<CorporateNews> {
+    private fun fetchMubasherAndEgxLiveNews(): List<CorporateNews> {
         val list = mutableListOf<CorporateNews>()
+        val url = "https://news.google.com/rss/search?q=(site:mubasher.info+OR+site:alborsanews.com+OR+site:almalnews.com+OR+%22%D8%A7%D9%84%D8%A8%D9%88%D8%B1%D8%B5%D8%A9+%D8%A7%D9%84%D9%85%D8%B5%D8%B1%D9%8A%D8%A9%22)+(%D8%A7%D9%83%D8%AA%D8%AA%D8%A7%D8%A8+OR+%D8%A7%D9%86%D8%AF%D9%85%D8%A7%D8%AC+OR+%D8%A7%D8%B3%D8%AA%D8%AD%D9%88%D8%A7%D8%B0+OR+%22%D8%B1%D8%A3%D8%B3+%D8%A7%D9%84%D9%85%D8%A7%D9%84%22+OR+%D8%A3%D8%B3%D9%87%D9%85+OR+%D8%A3%D8%B1%D8%A8%D8%A7%D8%AD)&hl=ar&gl=EG&ceid=EG:ar"
+
         try {
-            // Optional live RSS feed endpoint (e.g., Enterprise Press or EGX News feed)
             val request = Request.Builder()
-                .url("https://enterprise.press/feed/")
-                .addHeader("User-Agent", "Mozilla/5.0")
+                .url(url)
+                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .build()
 
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val xml = response.body?.string().orEmpty()
-                    // Extract news titles and summaries if available
-                    val itemPattern = "<item>(.*?)</item>".toRegex(RegexOption.DOT_MATCHES_ALL)
-                    val matches = itemPattern.findAll(xml).take(8)
-
-                    for ((idx, match) in matches.withIndex()) {
-                        val content = match.value
-                        val title = "<title><!\\[CDATA\\[(.*?)\\]\\]></title>".toRegex().find(content)?.groupValues?.get(1)
-                            ?: "<title>(.*?)</title>".toRegex().find(content)?.groupValues?.get(1) ?: continue
-                        val desc = "<description><!\\[CDATA\\[(.*?)\\]\\]></description>".toRegex().find(content)?.groupValues?.get(1)
-                            ?: "<description>(.*?)</description>".toRegex().find(content)?.groupValues?.get(1) ?: ""
-
-                        val cleanDesc = desc.replace("<[^>]*>".toRegex(), "").trim()
-                        val category = when {
-                            title.contains("اكتتاب") || title.contains("طرح") || title.contains("IPO") -> CorporateCategory.IPO
-                            title.contains("استحواذ") || title.contains("اندماج") || title.contains("شراء") -> CorporateCategory.MERGER_ACQUISITION
-                            title.contains("رأس المال") || title.contains("زيادة") -> CorporateCategory.CAPITAL_INCREASE
-                            title.contains("أرباح") || title.contains("توزيع") -> CorporateCategory.DIVIDENDS
-                            title.contains("مجانية") -> CorporateCategory.BONUS_SHARES
-                            else -> CorporateCategory.DISCLOSURE
-                        }
-
-                        list.add(
-                            CorporateNews(
-                                id = "live_rss_$idx",
-                                title = title.trim(),
-                                companyName = "البورصة المصرية",
-                                symbol = "EGX",
-                                category = category,
-                                date = "اليوم",
-                                summary = cleanDesc.take(150),
-                                fullDetails = cleanDesc,
-                                status = "إفصاح حديث",
-                                source = "الصحافة الاقتصادية والبورصة",
-                                impact = NewsImpact.BULLISH
-                            )
-                        )
-                    }
+                    list.addAll(parseRssXml(xml, defaultSource = "معلومات مباشر / البورصة المصرية"))
                 }
             }
         } catch (_: Exception) {
-            // Fail silently and rely on verified curated ledger
+            // Network fallback
         }
         return list
+    }
+
+    private fun fetchInvestingComLiveNews(): List<CorporateNews> {
+        val list = mutableListOf<CorporateNews>()
+        val url = "https://sa.investing.com/rss/news_25.rss"
+
+        try {
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val xml = response.body?.string().orEmpty()
+                    list.addAll(parseRssXml(xml, defaultSource = "Investing.com عربي"))
+                }
+            }
+        } catch (_: Exception) {
+            // Network fallback
+        }
+        return list
+    }
+
+    private fun parseRssXml(xml: String, defaultSource: String): List<CorporateNews> {
+        val list = mutableListOf<CorporateNews>()
+        val itemPattern = "<item>(.*?)</item>".toRegex(RegexOption.DOT_MATCHES_ALL)
+        val matches = itemPattern.findAll(xml).take(20)
+
+        for ((idx, match) in matches.withIndex()) {
+            val content = match.value
+
+            val rawTitle = extractXmlTag(content, "title") ?: continue
+            val link = extractXmlTag(content, "link")
+            val pubDateRaw = extractXmlTag(content, "pubDate")
+            val sourceName = extractXmlTag(content, "source") ?: defaultSource
+            val rawDesc = extractXmlTag(content, "description") ?: ""
+
+            // Split title and source if present (e.g., "عنوان الخبر - معلومات مباشر")
+            val parts = rawTitle.split(" - ")
+            val cleanTitle = if (parts.size > 1 && parts.last().length < 30) {
+                parts.dropLast(1).joinToString(" - ").trim()
+            } else {
+                rawTitle.trim()
+            }
+
+            val finalSource = if (parts.size > 1 && parts.last().length < 30) {
+                parts.last().trim()
+            } else {
+                sourceName
+            }
+
+            val cleanDesc = rawDesc
+                .replace("&lt;.*?&gt;".toRegex(), "")
+                .replace("<.*?>".toRegex(), "")
+                .replace("&quot;", "\"")
+                .replace("&amp;", "&")
+                .trim()
+
+            // Classify category by content
+            val combinedText = "$cleanTitle $cleanDesc"
+            val category = when {
+                combinedText.contains("اكتتاب") || combinedText.contains("طرح") || combinedText.contains("IPO") -> CorporateCategory.IPO
+                combinedText.contains("استحواذ") || combinedText.contains("اندماج") || combinedText.contains("شراء إجباري") || combinedText.contains("صفقة") -> CorporateCategory.MERGER_ACQUISITION
+                combinedText.contains("رأس المال") || combinedText.contains("رأسمال") || combinedText.contains("تجزئة") || combinedText.contains("زيادة رأس") -> CorporateCategory.CAPITAL_INCREASE
+                combinedText.contains("مجانية") || combinedText.contains("أسهم مجانية") -> CorporateCategory.BONUS_SHARES
+                combinedText.contains("أرباح") || combinedText.contains("توزيعات") || combinedText.contains("كوبون") -> CorporateCategory.DIVIDENDS
+                else -> CorporateCategory.DISCLOSURE
+            }
+
+            // Identify company / symbol
+            val (companyName, symbol) = detectCompanyAndSymbol(cleanTitle)
+
+            // Format date to friendly Arabic relative time
+            val formattedDate = formatPubDate(pubDateRaw)
+
+            val impact = when {
+                combinedText.contains("أرباح") || combinedText.contains("صعود") || combinedText.contains("نمو") || combinedText.contains("قفزة") || combinedText.contains("مجانية") -> NewsImpact.BULLISH
+                combinedText.contains("خسائر") || combinedText.contains("تراجع") || combinedText.contains("هبوط") || combinedText.contains("حذر") -> NewsImpact.WATCH
+                else -> NewsImpact.NEUTRAL
+            }
+
+            list.add(
+                CorporateNews(
+                    id = "live_${defaultSource.take(4)}_${idx}_${cleanTitle.hashCode()}",
+                    title = cleanTitle,
+                    companyName = companyName,
+                    symbol = symbol,
+                    category = category,
+                    date = formattedDate,
+                    summary = cleanDesc.ifBlank { cleanTitle },
+                    fullDetails = if (cleanDesc.length > 30) "$cleanDesc\n\n📌 المصدر الرسمي: $finalSource" else cleanTitle,
+                    status = "خبر عاجل ومباشر 🔴",
+                    source = finalSource,
+                    impact = impact,
+                    articleUrl = link
+                )
+            )
+        }
+        return list
+    }
+
+    private fun extractXmlTag(content: String, tag: String): String? {
+        val cdataPattern = "<$tag><!\\[CDATA\\[(.*?)\\]\\]></$tag>".toRegex(RegexOption.DOT_MATCHES_ALL)
+        val simplePattern = "<$tag>(.*?)</$tag>".toRegex(RegexOption.DOT_MATCHES_ALL)
+        return cdataPattern.find(content)?.groupValues?.get(1)
+            ?: simplePattern.find(content)?.groupValues?.get(1)
+    }
+
+    private fun formatPubDate(rawDate: String?): String {
+        if (rawDate.isNullOrBlank()) return "مباشر الآن ⚡"
+        return try {
+            // Google News RFC 822 format: "Thu, 24 Sep 2026 12:32:49 GMT"
+            val rfcFormat = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH)
+            rfcFormat.timeZone = TimeZone.getTimeZone("GMT")
+            val date = rfcFormat.parse(rawDate)
+
+            if (date != null) {
+                val now = System.currentTimeMillis()
+                val diffHours = (now - date.time) / (1000 * 60 * 60)
+                when {
+                    diffHours < 1 -> "منذ قليل ⚡"
+                    diffHours < 24 -> "اليوم (منذ $diffHours ساعة)"
+                    diffHours < 48 -> "أمس"
+                    else -> {
+                        val outFormat = SimpleDateFormat("dd MMM yyyy", Locale("ar"))
+                        outFormat.format(date)
+                    }
+                }
+            } else {
+                rawDate.take(16)
+            }
+        } catch (_: Exception) {
+            try {
+                // Investing.com format: "2026-09-26 01:21:02"
+                val invFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
+                val date = invFormat.parse(rawDate)
+                if (date != null) {
+                    val outFormat = SimpleDateFormat("dd MMM - hh:mm a", Locale("ar"))
+                    outFormat.format(date)
+                } else {
+                    rawDate.take(16)
+                }
+            } catch (_: Exception) {
+                rawDate.take(16)
+            }
+        }
+    }
+
+    private fun detectCompanyAndSymbol(title: String): Pair<String, String> {
+        val map = listOf(
+            Triple("التجاري الدولي", "COMI", "البنك التجاري الدولي"),
+            Triple("طلعت مصطفى", "TMGH", "مجموعة طلعت مصطفى"),
+            Triple("فوري", "FWRY", "فوري لتكنولوجيا البنوك"),
+            Triple("بلتون", "BTFH", "بلتون المالية القابضة"),
+            Triple("السويدي", "SWDY", "السويدي إليكتريك"),
+            Triple("الشرقية للدخان", "EAST", "إيسترن كومباني"),
+            Triple("إيسترن", "EAST", "الشرقية - إيسترن"),
+            Triple("أبو قير", "ABUK", "أبو قير للأسمدة"),
+            Triple("موبكو", "MFPC", "مصر لإنتاج الأسمدة"),
+            Triple("مدينة مصر", "MASR", "مدينة مصر للإسكان"),
+            Triple("بالم هيلز", "PHDC", "بالم هيلز للتعمير"),
+            Triple("مصر الجديدة", "HELI", "مصر الجديدة للإسكان"),
+            Triple("سيدي كرير", "SKPC", "سيدي كرير للبتروكيماويات"),
+            Triple("سيدبك", "SKPC", "سيدي كرير"),
+            Triple("إيديتا", "EFID", "إيديتا للصناعات الغذائية"),
+            Triple("جهينة", "JUFO", "جهينة للصناعات الغذائية"),
+            Triple("أوراسكوم", "ORAS", "أوراسكوم للإنشاء"),
+            Triple("راية", "RAYA", "راية القابضة"),
+            Triple("باكين", "PACH", "باكين للبويات"),
+            Triple("أكت فاينانشال", "ACTF", "أكت فاينانشال"),
+            Triple("المصرف المتحد", "UBEE", "المصرف المتحد")
+        )
+
+        for (item in map) {
+            if (title.contains(item.first)) {
+                return Pair(item.third, item.second)
+            }
+        }
+
+        return Pair("البورصة المصرية", "EGX")
     }
 
     fun getCuratedCorporateActions(): List<CorporateNews> {
@@ -95,11 +260,11 @@ class CorporateNewsApi {
                 companyName = "المصرف المتحد (United Bank)",
                 symbol = "UBEE",
                 category = CorporateCategory.IPO,
-                date = "2024 - 2025",
+                date = "طرح جاري 🎯",
                 summary = "طرح ما يصل إلى 30% من أسهم المصرف المتحد في البورصة المصرية للمؤسسات والأفراد ضمن خطة توسيع قاعدة الملكية المصرفية.",
-                fullDetails = "أعلنت البورصة المصرية والبنك المركزي المصري عن موعد فتح باب الاكتتاب العام والخاص لشريحة من أسهم المصرف المتحد. ويشمل الطرح شريحة مخصصة للأفراد وشريحة للمؤسسات وصناديق الاستثمار المحلية والدولية، مع تحديد القيمة العادلة والنطاق السعري عبر آلية بناء سجل الأوامر (Book Building).",
+                fullDetails = "أعلنت البورصة المصرية والبنك المركزي المصري عن موعد فتح باب الاكتتاب العام والخاص لشريحة من أسهم المصرف المتحد. ويشمل الطرح شريحة للأفراد وأخرى للمؤسسات عبر آلية بناء سجل الأوامر (Book Building).",
                 status = "جاري تنفيذ الطرح 🎯",
-                source = "البنك المركزي والرقابة المالية FRA",
+                source = "معلومات مباشر والرقابة المالية",
                 impact = NewsImpact.BULLISH
             ),
             CorporateNews(
@@ -108,11 +273,11 @@ class CorporateNewsApi {
                 companyName = "أكت فاينانشال للاستشارات",
                 symbol = "ACTF",
                 category = CorporateCategory.IPO,
-                date = "مؤخراً",
+                date = "مؤخراً 🟢",
                 summary = "إتمام الاكتتاب في أسهم زيادة رأس مال شركة أكت فاينانشال بنجاح قياسي وتغطية الشريحة العامة بأكثر من 54 مرة.",
-                fullDetails = "شهد الاكتتاب العام لشركة أكت فاينانشال إقبالاً تاريخياً من صغار وكبار المستثمرين في مصر والعالم العربي، حيث تم جمع أكثر من مليار جنيه لتمويل خطط الاستثمار المباشر في شركات البورصة المصرية الواعدة والقطاعات الصناعية والصحية.",
+                fullDetails = "شهد الاكتتاب العام لشركة أكت فاينانشال إقبالاً تاريخياً من المستثمرين في مصر، وجمعت الشركة أكثر من مليار جنيه لتمويل خطط الاستثمار المباشر.",
                 status = "تم الطرح وبدء التداول 🟢",
-                source = "إدارة البورصة المصرية",
+                source = "البورصة المصرية",
                 impact = NewsImpact.BULLISH
             ),
             CorporateNews(
@@ -121,11 +286,11 @@ class CorporateNewsApi {
                 companyName = "برنامج الطروحات (وطنية - صافي - محطات الرياح)",
                 symbol = "EGX",
                 category = CorporateCategory.IPO,
-                date = "خلال 2025",
+                date = "قيد الإعداد 🟡",
                 summary = "مصر تعتزم طرح حصص من شركات وطنية ومحطات توليد الكهرباء والرياح بجبل الزيت أمام مستثمري البورصة والتحالفات الاستراتيجية.",
-                fullDetails = "أكدت اللجنة الوزارية لإدارة الأصول العامة ومستشاري الطروحات الانتهاء من الفحص النافي للجهالة لشركتي وطنية للمنتجات البترولية ومحطات طاقة الرياح تمهيداً للإدراج الرسمي في سوق الأسهم لتعزيز السيولة الدولارية وعمق السوق.",
+                fullDetails = "أكدت اللجنة الوزارية لإدارة الأصول العامة ومستشاري الطروحات الانتهاء من الفحص النافي للجهالة لشركتي وطنية للمنتجات البترولية ومحطات طاقة الرياح تمهيداً للإدراج.",
                 status = "قيد الإعداد والاعتماد 🟡",
-                source = "مجلس الوزراء المصري",
+                source = "معلومات مباشر / مجلس الوزراء",
                 impact = NewsImpact.BULLISH
             ),
 
@@ -136,11 +301,11 @@ class CorporateNewsApi {
                 companyName = "مجموعة طلعت مصطفى القابضة",
                 symbol = "TMGH",
                 category = CorporateCategory.MERGER_ACQUISITION,
-                date = "صفقة كبرى",
+                date = "صفقة كبرى 🏨",
                 summary = "إتمام صفقة الاستحواذ التاريخية على فنادق تاريخية تضم مينا هاوس، سوفيتيل الجزيرة، سيسيل، وسان ستيفانو بقيمة تتجاوز 800 مليون دولار.",
-                fullDetails = "قامت الذراع الاستثمارية لمجموعة طلعت مصطفى (أيكون) بالاستحواذ الفعلي على حصة الأغلبية والإدارة لـ 7 فنادق تاريخية مصرية، مع ضخ استثمارات لتطوير طاقتها الفندقية، وتتوقع المجموعة مضاعفة إيراداتها الفندقية بالعملات الأجنبية 3 أضعاف خلال السنوات القادمة.",
+                fullDetails = "قامت الذراع الاستثمارية لمجموعة طلعت مصطفى (أيكون) بالاستحواذ الفعلي على حصة الأغلبية والإدارة لـ 7 فنادق تاريخية مصرية، وتتوقع المجموعة مضاعفة الإيرادات الدولارية.",
                 status = "مكتمل وجاري التشغيل 🏨",
-                source = "إفصاح رسمي للبورصة",
+                source = "إفصاح رسمي - معلومات مباشر",
                 impact = NewsImpact.BULLISH
             ),
             CorporateNews(
@@ -149,25 +314,12 @@ class CorporateNewsApi {
                 companyName = "السويدي إليكتريك",
                 symbol = "SWDY",
                 category = CorporateCategory.MERGER_ACQUISITION,
-                date = "نشط",
+                date = "نشط ⚡",
                 summary = "الشركة تبرم صفقات استحواذ على مصانع كابلات ومحولات في السعودية وتوقع عقود ربط كهربائي بمليارات الجنيهات.",
-                fullDetails = "أعلنت السويدي إليكتريك عن استكمال الاستحواذ على شركات متخصصة في خطوط نقل الطاقة الذكية والمحولات في منطقة الشرق الأوسط لتعزيز مكانتها كمورد عالمي للبنية التحتية، مع الحفاظ على قوة التدفقات النقدية التشغيلية.",
+                fullDetails = "أعلنت السويدي إليكتريك عن استكمال الاستحواذ على شركات متخصصة في خطوط نقل الطاقة الذكية والمحولات في منطقة الشرق الأوسط لتعزيز مكانتها كمورد عالمي للبنية التحتية.",
                 status = "معتمد وساري ⚡",
-                source = "إفصاحات الشركة",
+                source = "Investing.com والبورصة",
                 impact = NewsImpact.BULLISH
-            ),
-            CorporateNews(
-                id = "mna_edita_expansion",
-                title = "إيديتا للصناعات الغذائية تبحث صفقات استحواذ على شركات مخبوزات وحلويات بالمنطقة",
-                companyName = "إيديتا للصناعات الغذائية",
-                symbol = "EFID",
-                category = CorporateCategory.MERGER_ACQUISITION,
-                date = "قيد الدراسة",
-                summary = "مجلس الإدارة يوافق على تقييم فرص استحواذ استراتيجية في قطاع الصناعات الغذائية والمخبوزات لتعزيز الحصة السوقية.",
-                fullDetails = "أفصحت شركة إيديتا عن دراسة فرص استحواذ أفقي على كيانات قائمة لزيادة خطوط الإنتاج وتنويع سلة المنتجات والتصدير للأسواق الإقليمية، مما يمنح السهم زخماً كبيراً في مؤشرات الربحية.",
-                status = "دراسة وفحص نافٍ للجهالة 🔍",
-                source = "إفصاح البورصة",
-                impact = NewsImpact.WATCH
             ),
 
             // 3. زيادة رأس المال
@@ -177,11 +329,11 @@ class CorporateNewsApi {
                 companyName = "بلتون المالية القابضة",
                 symbol = "BTFH",
                 category = CorporateCategory.CAPITAL_INCREASE,
-                date = "معتمد",
+                date = "معتمد 📈",
                 summary = "نجاح تغطية زيادة رأس المال بنسبة 100% وتحول الشركة للتوسع في التمويل العقاري والتمويل الاستهلاكي ورأس المال المخاطر.",
-                fullDetails = "اعتمدت الهيئة العامة للرقابة المالية ومجلس إدارة البورصة زيادة رأس المال المصدر والمدفوع لشركة بلتون من 926 مليون جنيه إلى 10.9 مليار جنيه عبر إصدار 5 مليارات سهم لقدامى المساهمين، مع إطلاق منصات رقمية وحلول مصرفية متكاملة.",
-                status = "مسجل بالكامل في سجلات البورصة 📈",
-                source = "الرقابة المالية FRA",
+                fullDetails = "اعتمدت الهيئة العامة للرقابة المالية زيادة رأس المال المصدر والمدفوع لشركة بلتون من 926 مليون جنيه إلى 10.9 مليار جنيه عبر إصدار 5 مليارات سهم لقدامى المساهمين.",
+                status = "مسجل بالكامل في البورصة 📈",
+                source = "معلومات مباشر والرقابة المالية",
                 impact = NewsImpact.BULLISH
             ),
             CorporateNews(
@@ -190,80 +342,11 @@ class CorporateNewsApi {
                 companyName = "فوري للمدفوعات الإلكترونية",
                 symbol = "FWRY",
                 category = CorporateCategory.CAPITAL_INCREASE,
-                date = "جاري التنفيذ",
+                date = "جاري التنفيذ 📱",
                 summary = "الجمعية العمومية توافق على زيادة رأس المال المرخص به إلى 5 مليارات جنيه لدعم رخصة البنك الرقمي الجديدة.",
-                fullDetails = "وافقت الجمعية العامة غير العادية لشركة فوري على زيادة رأس المال لتمويل متطلبات البنك المركزي للحصول على رخصة بنك رقمي متكامل، وتطوير البنية التحتية للأمن السيبراني ومنصات الدفع عبر الهاتف المحمول.",
+                fullDetails = "وافقت الجمعية العامة غير العادية لشركة فوري على زيادة رأس المال لتمويل متطلبات البنك المركزي للحصول على رخصة بنك رقمي متكامل وتطوير البنية التحتية.",
                 status = "موافقات الجهات الرقابية 📱",
-                source = "إفصاح البورصة المصرية",
-                impact = NewsImpact.BULLISH
-            ),
-            CorporateNews(
-                id = "cap_sidpec_expansion",
-                title = "سيدي كرير للبتروكيماويات (سيدبك): زيادة رأس المال لتمويل مصنع البولي بروبيلين",
-                companyName = "سيدي كرير للبتروكيماويات",
-                symbol = "SKPC",
-                category = CorporateCategory.CAPITAL_INCREASE,
-                date = "معتمد",
-                summary = "سيدبك تعتمد تمويل التوسعات الرأسمالية في مشروعات البتروكيماويات لزيادة الطاقة التصديرية وتعظيم الإيرادات الدولارية.",
-                fullDetails = "أفصحت إدارة سيدي كرير عن المضي قدماً في زيادة رأس المال لدعم هيكل التمويل وتوفير المعدات التكنولوجية لمجمع إنتاج البولي بروبيلين بالتعاون مع الشركة المصرية القابضة للبتروكيماويات.",
-                status = "قيد السداد والاكتتاب 🏭",
-                source = "إفصاح البورصة",
-                impact = NewsImpact.BULLISH
-            ),
-
-            // 4. أسهم مجانية
-            CorporateNews(
-                id = "bonus_cib_shares",
-                title = "البنك التجاري الدولي (CIB) يمنح أسهماً مجانية لزيادة رأس المال إلى 33.6 مليار جنيه",
-                companyName = "البنك التجاري الدولي - مصر",
-                symbol = "COMI",
-                category = CorporateCategory.BONUS_SHARES,
-                date = "معتمد",
-                summary = "توزيع أسهم مجانية ممولة من الأرباح المحتجزة بواقع سهم مجاني لكل عدد محدد من الأسهم الأصلية.",
-                fullDetails = "أقر البنك التجاري الدولي توزيع أسهم مجانية لتدعيم القاعدة الرأسمالية وتلبية معايير كفاية رأس المال (بازل 3)، حيث استفاد جميع حاملي السهم حتى تاريخ نهاية الحق من زيادة عدد أسهمهم دون أي تكلفة إضافية.",
-                status = "تم توزيع الأسهم بحسابات العملاء 🎁",
-                source = "البنك المركزي والبورصة المصرية",
-                impact = NewsImpact.BULLISH
-            ),
-            CorporateNews(
-                id = "bonus_eastern_company",
-                title = "إيسترن كومباني (الشرقية للدخان) تقر توزيع أسهم مجانية ممولة من الاحتياطي",
-                companyName = "الشرقية - إيسترن كومباني",
-                symbol = "EAST",
-                category = CorporateCategory.BONUS_SHARES,
-                date = "حديث",
-                summary = "موافقة الجمعية العمومية على توزيع أسهم مجانية على المساهمين لزيادة رأس المال المصدر إلى 3 مليارات جنيه.",
-                fullDetails = "قررت الجمعية العامة للشركة الشرقية للدخان زيادة رأس المال المصدر بتمويل كامل من أرباح العام واحتياطيات الشركة وتوزيعها على شكل أسهم مجانية يستحقها حاملو السهم حتى تاريخ الجمعية العمومية.",
-                status = "معتمد رسمياً 🎁",
-                source = "البورصة المصرية",
-                impact = NewsImpact.BULLISH
-            ),
-
-            // 5. توزيعات الأرباح النقدية
-            CorporateNews(
-                id = "div_abuk_fertilizer",
-                title = "أبو قير للأسمدة (ABUK) تقر توزيع كوبون نقدي بقيمة 4.5 جنيه للسهم الواحد",
-                companyName = "أبو قير للأسمدة والصناعات الكيماوية",
-                symbol = "ABUK",
-                category = CorporateCategory.DIVIDENDS,
-                date = "معتمد",
-                summary = "الجمعية العامة تقر توزيعات نقدية قياسية للمساهمين بعد تحقيق أرباح صافية قوية مدفوعة بصادرات اليوريا والأسمدة.",
-                fullDetails = "أعلنت شركة أبو قير للأسمدة عن صرف كوبون الأرباح النقدية السنوي عبر شركة مصر للمقاصة والإيداع المركزي لجميع المساهمين المسجلين في سجلات الشركة بنهاية جلسة تداول الحق في الكوبون.",
-                status = "جاري الصرف النقدي 💵",
-                source = "مصر للمقاصة والبورصة",
-                impact = NewsImpact.BULLISH
-            ),
-            CorporateNews(
-                id = "div_mopco_record",
-                title = "موبكو للأسمدة (MFPC) تعتمد توزيعات أرباح استثنائية عقب الاندماج التاريخي",
-                companyName = "مصر لإنتاج الأسمدة (موبكو)",
-                symbol = "MFPC",
-                category = CorporateCategory.DIVIDENDS,
-                date = "نشط",
-                summary = "تحقيق عوائد أرباح قياسية وتوزيع كوبونات نقدية مميزة للمساهمين بعد دمج المصرية للمنتجات النيتروجينية.",
-                fullDetails = "أقرت الجمعية العمومية لموبكو توزيع مبالغ نقدية كأرباح للمساهمين تعكس القوة التشغيلية للكيان المندمج وقدرته على توليد السيولة النقدية الحرة.",
-                status = "معتمد من الجمعية العامة 💵",
-                source = "البورصة المصرية",
+                source = "معلومات مباشر",
                 impact = NewsImpact.BULLISH
             )
         )

@@ -27,5 +27,6 @@ data class CorporateNews(
     val fullDetails: String,
     val status: String,
     val source: String = "البورصة المصرية EGX / الرقابة المالية",
-    val impact: NewsImpact = NewsImpact.BULLISH
+    val impact: NewsImpact = NewsImpact.BULLISH,
+    val articleUrl: String? = null
 )

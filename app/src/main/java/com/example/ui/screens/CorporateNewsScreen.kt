@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -120,9 +123,9 @@ fun CorporateNewsScreen(
                         color = TextPrimary
                     )
                     Text(
-                        text = "طروحات IPOs، زيادات رأس المال، صفقات الاندماج والاستحواذ",
-                        fontSize = 11.sp,
-                        color = TextSecondary
+                        text = "بث حي: معلومات مباشر • إنفستنج عربي • البورصة المصرية • المال",
+                        fontSize = 10.sp,
+                        color = AccentCyan
                     )
                 }
 
@@ -267,6 +270,7 @@ fun CorporateNewsItemCard(
     onAnalyzeStock: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -421,7 +425,27 @@ fun CorporateNewsItemCard(
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("مشاركة على واتساب 📲", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("واتساب 📲", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        if (!news.articleUrl.isNullOrBlank()) {
+                            Button(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(news.articleUrl))
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {}
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("btn_open_browser_${news.id}"),
+                                colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.OpenInBrowser, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("المصدر 🌐", color = AccentCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
 
                         if (news.symbol.isNotBlank() && news.symbol != "EGX") {
@@ -435,7 +459,7 @@ fun CorporateNewsItemCard(
                             ) {
                                 Icon(Icons.Default.QueryStats, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("تحليل سهم ${news.symbol}", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("${news.symbol} 📊", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
