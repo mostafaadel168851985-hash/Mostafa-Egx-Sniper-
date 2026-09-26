@@ -341,6 +341,9 @@ fun EgxSniperApp(
 
                 NavScreen.JOURNAL -> PerformanceJournalScreen(
                     trades = allTrades,
+                    currentStocks = uiState.allStocks,
+                    onSnapshotScreeners = { viewModel.snapshotAllCurrentScreenerRecommendations() },
+                    onAutoAudit = { viewModel.autoAuditAllTradesAgainstLivePrices() },
                     onUpdateStatus = { id, status, profit -> viewModel.updateTradeStatus(id, status, profit) },
                     onDeleteTrade = { viewModel.deleteTrade(it) }
                 )
