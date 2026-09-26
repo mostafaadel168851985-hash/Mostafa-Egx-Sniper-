@@ -1,0 +1,6 @@
+{
+  "name": "EGX Sniper Pro",
+  "description": "تطبيق متقدم للبورصة المصرية EGX لتحليل الأسهم، كشف نماذج الشموع والدعوم والمقاومات، حساب متوسط السعر، وتنبيهات تغير اتجاه المؤشر.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
