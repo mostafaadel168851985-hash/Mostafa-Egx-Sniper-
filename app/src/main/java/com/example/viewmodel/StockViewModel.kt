@@ -351,6 +351,69 @@ class StockViewModel(
         }
     }
 
+    fun clearAllAuditTrades() {
+        viewModelScope.launch {
+            repository.clearAllTrades()
+            _uiState.update { it.copy(userMessage = "تم مسح جميع سجلات الصفقات والتدقيق بالكامل 🗑️") }
+        }
+    }
+
+    fun snapshotTomorrowPicksOnly() {
+        viewModelScope.launch {
+            val stocks = _uiState.value.allStocks
+            if (stocks.isEmpty()) {
+                _uiState.update { it.copy(userMessage = "لا توجد بيانات أسهم حالياً") }
+                return@launch
+            }
+
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+            val existing = allTrades.value
+
+            // Select only the top elite picks for Tomorrow (Top 3 to 5 highest smartScore and R:R)
+            val tomorrowCandidates = stocks
+                .filter { it.isTomorrowPick }
+                .sortedWith(compareByDescending<StockData> { it.smartScore }.thenByDescending { it.riskRewardRatio })
+                .take(5)
+
+            if (tomorrowCandidates.isEmpty()) {
+                _uiState.update { it.copy(userMessage = "لم يجتز أي سهم شروط مرشح الغد الصارمة اليوم (حفاظاً على رأس المال)") }
+                return@launch
+            }
+
+            var addedCount = 0
+            for (stock in tomorrowCandidates) {
+                val alreadySaved = existing.any { it.symbol == stock.symbol && it.tradeType == "مرشح الغد 🎯" && it.dateRecorded == today }
+                if (!alreadySaved) {
+                    val trade = TradeEntity(
+                        symbol = stock.symbol,
+                        name = stock.name,
+                        entryPrice = stock.entryPrice,
+                        target = stock.target1,
+                        stopLoss = stock.stopLoss,
+                        targetPct = stock.targetPct,
+                        riskPct = stock.riskPct,
+                        rr = stock.riskRewardRatio,
+                        tradeType = "مرشح الغد 🎯",
+                        dateRecorded = today,
+                        status = "pending",
+                        smartScore = stock.smartScore
+                    )
+                    repository.recordTrade(trade)
+                    addedCount++
+                }
+            }
+
+            _uiState.update {
+                it.copy(
+                    userMessage = if (addedCount > 0)
+                        "تم حفظ صفوة مرشحات الغد لليوم القادم ($addedCount أسهم نارية 🎯) للتدقيق وقياس النتيجة"
+                    else
+                        "مرشحات الغد لليوم مسجلة مسبقاً في السجل لنفس التاريخ"
+                )
+            }
+        }
+    }
+
     fun snapshotAllCurrentScreenerRecommendations() {
         viewModelScope.launch {
             val stocks = _uiState.value.allStocks
@@ -365,16 +428,35 @@ class StockViewModel(
             var addedCount = 0
             val candidates = mutableListOf<Pair<StockData, String>>()
 
-            // 1. مرشح الغد
-            stocks.filter { it.isTomorrowPick }.forEach { stock -> candidates.add(Pair(stock, "مرشح الغد 🎯")) }
-            // 2. بداية الصعود
-            stocks.filter { it.isEarlyUptrend }.forEach { stock -> candidates.add(Pair(stock, "بداية الصعود 🚀")) }
-            // 3. فرص الاختراق
-            stocks.filter { it.isRapidBreakout }.forEach { stock -> candidates.add(Pair(stock, "فرص الاختراق ⚡")) }
-            // 4. صيد القيعان والارتداد
-            stocks.filter { it.isSupportBounce }.forEach { stock -> candidates.add(Pair(stock, "صيد القيعان 💎")) }
-            // 5. صيد التصحيح
-            stocks.filter { it.isCorrectionHunter }.forEach { stock -> candidates.add(Pair(stock, "صيد التصحيح 🌊")) }
+            // 1. مرشح الغد (صفوة 5 أسهم)
+            stocks.filter { it.isTomorrowPick }
+                .sortedByDescending { it.smartScore }
+                .take(5)
+                .forEach { stock -> candidates.add(Pair(stock, "مرشح الغد 🎯")) }
+
+            // 2. بداية الصعود (صفوة 3 أسهم)
+            stocks.filter { it.isEarlyUptrend }
+                .sortedByDescending { it.upsideTo52wHigh }
+                .take(3)
+                .forEach { stock -> candidates.add(Pair(stock, "بداية الصعود 🚀")) }
+
+            // 3. فرص الاختراق (صفوة 3 أسهم)
+            stocks.filter { it.isRapidBreakout }
+                .sortedByDescending { it.breakoutQuality.score }
+                .take(3)
+                .forEach { stock -> candidates.add(Pair(stock, "فرص الاختراق ⚡")) }
+
+            // 4. صيد القيعان والارتداد (صفوة 3 أسهم)
+            stocks.filter { it.isSupportBounce }
+                .sortedByDescending { it.smartScore }
+                .take(3)
+                .forEach { stock -> candidates.add(Pair(stock, "صيد القيعان 💎")) }
+
+            // 5. صيد التصحيح (صفوة 3 أسهم)
+            stocks.filter { it.isCorrectionHunter }
+                .sortedByDescending { it.smartScore }
+                .take(3)
+                .forEach { stock -> candidates.add(Pair(stock, "صيد التصحيح 🌊")) }
 
             for ((stock, category) in candidates) {
                 val alreadySaved = existing.any { it.symbol == stock.symbol && it.tradeType == category && it.dateRecorded == today }
@@ -401,7 +483,7 @@ class StockViewModel(
             _uiState.update {
                 it.copy(
                     userMessage = if (addedCount > 0)
-                        "تم حفظ لقطة جميع فلاتر اليوم بنجاح ($addedCount فرصة مضافة للتدقيق والتقييم الآلي 📸)"
+                        "تم حفظ صفوة كافة الفلاتر بنجاح ($addedCount فرصة نارية مسجلة للتدقيق 📸)"
                     else
                         "فلاتر اليوم مسجلة مسبقاً في نظام التدقيق لنفس التاريخ"
                 )
@@ -415,41 +497,61 @@ class StockViewModel(
             val trades = allTrades.value
             if (stocks.isEmpty() || trades.isEmpty()) return@launch
 
-            var updatedCount = 0
+            var hitCount = 0
+            var stopCount = 0
             val stockMap = stocks.associateBy { it.symbol }
 
             for (trade in trades) {
-                val currentStock = stockMap[trade.symbol] ?: continue
-                val currentPrice = currentStock.price
-                val entryPrice = trade.entryPrice
+                // Only evaluate pending trades
+                if (trade.status != "pending") continue
 
+                val currentStock = stockMap[trade.symbol] ?: continue
+                val entryPrice = trade.entryPrice
                 if (entryPrice <= 0.0) continue
 
-                // Check if target reached (price went above target for long trades)
-                if (trade.status == "pending") {
-                    if (currentPrice >= trade.target) {
+                val livePrice = currentStock.price
+                val dayHigh = currentStock.high
+                val dayLow = currentStock.low
+
+                // High precision check: Did price reach target during session?
+                val targetReached = (dayHigh >= trade.target) || (livePrice >= trade.target)
+                // Did price break stop loss during session?
+                val stopLossBroken = (dayLow <= trade.stopLoss) || (livePrice <= trade.stopLoss)
+
+                if (targetReached && !stopLossBroken) {
+                    val gainPct = ((trade.target - entryPrice) / entryPrice) * 100.0
+                    repository.updateTradeStatus(trade.id, "hit_target", gainPct)
+                    hitCount++
+                } else if (stopLossBroken && !targetReached) {
+                    val lossPct = ((trade.stopLoss - entryPrice) / entryPrice) * 100.0
+                    repository.updateTradeStatus(trade.id, "stopped_out", lossPct)
+                    stopCount++
+                } else if (targetReached && stopLossBroken) {
+                    // Both extremes reached: settle based on where the live price closed/stands
+                    if (livePrice >= entryPrice) {
                         val gainPct = ((trade.target - entryPrice) / entryPrice) * 100.0
                         repository.updateTradeStatus(trade.id, "hit_target", gainPct)
-                        updatedCount++
-                    } else if (currentPrice <= trade.stopLoss) {
+                        hitCount++
+                    } else {
                         val lossPct = ((trade.stopLoss - entryPrice) / entryPrice) * 100.0
                         repository.updateTradeStatus(trade.id, "stopped_out", lossPct)
-                        updatedCount++
-                    } else {
-                        // Update floating profit % so user sees current real-time progress
-                        val floatingPct = ((currentPrice - entryPrice) / entryPrice) * 100.0
-                        repository.updateTradeStatus(trade.id, "pending", floatingPct)
+                        stopCount++
                     }
+                } else {
+                    // Actively moving: calculate live floating P&L %
+                    val floatingPct = ((livePrice - entryPrice) / entryPrice) * 100.0
+                    repository.updateTradeStatus(trade.id, "pending", floatingPct)
                 }
             }
 
+            val totalSettled = hitCount + stopCount
             if (!silent) {
                 _uiState.update {
                     it.copy(
-                        userMessage = if (updatedCount > 0)
-                            "تم تدقيق ومطابقة الصفقات آلياً مع الأسعار الحية ($updatedCount صفقة حُسمت 🎯)"
+                        userMessage = if (totalSettled > 0)
+                            "تم تدقيق الأداء: $hitCount حققت الهدف 🎯 و $stopCount كسرت الوقف"
                         else
-                            "تم تحديث الأرباح والخسائر اللحظية لجميع الفلاتر بنجاح ⚡"
+                            "تم تحديث الأرباح والخسائر اللحظية لجميع الصفقات قيد الحركة ⚡"
                     )
                 }
             }

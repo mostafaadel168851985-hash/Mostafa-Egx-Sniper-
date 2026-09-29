@@ -642,26 +642,28 @@ class TradingViewScannerApi {
                 sma200 = sma200, r1 = r1, dailyTurnover = dailyTurnover, candleStrength = candleStrength
             )
 
-            // Screener logic:
-            // 1. Correction Hunter:
-            val isCorrectionHunter = (trendLong == "صاعد" || p > sma200) &&
-                    (rsi in 28.0..55.0) && (chg > -1.0) && (dailyTurnover >= 2_000_000)
-
-            // 2. Rapid Breakout:
-            val isRapidBreakout = (rsi in 48.0..75.0) && (volumeRatio >= 1.2 || dailyTurnover >= 10_000_000) &&
-                    (p >= r1 * 0.96) && (breakoutQuality.score >= 40)
-
-            // 3. Support Bounce:
+            // Screener logic (Upgraded for high accuracy & reduced false signals):
+            // 1. Correction Hunter (اقتناص التصحيح في الاتجاه الصاعد):
             val distToS1 = if (s1 > 0) (p - s1) / s1 * 100.0 else 99.0
-            val isSupportBounce = (distToS1 in 0.0..1.8) && (chg in 0.0..4.0) && (rsi > 38.0) && (p >= s1)
+            val isCorrectionHunter = (trendLong == "صاعد" || p > sma200) &&
+                    (rsi in 30.0..52.0) && (chg > -1.2) && (dailyTurnover >= 3_000_000) && (distToS1 <= 2.5)
 
-            // 4. Early Uptrend:
-            val isEarlyUptrend = (upsideTo52wHigh >= 20.0) && (trendShort == "صاعد") &&
-                    (rsi in 42.0..65.0) && (chg > -0.8) && (perf1m > -12.0)
+            // 2. Rapid Breakout (اختراق سريع قوي مع سيولة حقيقية):
+            val isRapidBreakout = (rsi in 48.0..72.0) && (volumeRatio >= 1.25 || dailyTurnover >= 8_000_000) &&
+                    (p >= r1 * 0.97) && (breakoutQuality.score >= 50) && (trendShort == "صاعد")
 
-            // 5. Tomorrow Pick:
-            val isTomorrowPick = smartScore >= 60 && rr >= 1.5 && dailyTurnover >= 3_000_000 &&
-                    (confGrade == "A+" || confGrade == "A" || confGrade == "B")
+            // 3. Support Bounce (ارتداد حقيقي من الدعم):
+            val isSupportBounce = (distToS1 in 0.0..1.8) && (chg in 0.0..4.0) && (rsi in 35.0..55.0) && (p >= s1) && (dailyTurnover >= 2_000_000)
+
+            // 4. Early Uptrend (بداية انطلاق صاعد مع مساحة للقمة السنوية):
+            val isEarlyUptrend = (upsideTo52wHigh >= 20.0) && (trendShort == "صاعد" || p >= sma20) &&
+                    (rsi in 44.0..65.0) && (chg > -0.5) && (perf1m > -10.0) && (dailyTurnover >= 2_500_000)
+
+            // 5. Tomorrow Pick (مرشح الغد الناري - صفوة الأسهم ذات الاحتمالية الأعلى):
+            val isTomorrowPick = smartScore >= 68 && rr >= 1.8 && dailyTurnover >= 4_000_000 &&
+                    (confGrade == "A+" || confGrade == "A") &&
+                    (rsi in 42.0..68.0) && (trendShort == "صاعد" || p >= sma20) &&
+                    (chg > -1.0) && (breakoutQuality.score >= 45)
 
             val screenerReasons = mutableListOf<String>()
             if (isGoldenCross) screenerReasons.add("🌟 تقاطع ذهبي 50/200 يوم (إيجابي جداً)")

@@ -288,41 +288,65 @@ fun StockCard(
                 }
             }
 
-            // Ideal Entry & Exit Box
+            // Ideal Entry & Exit Box with Dual Target & Trailing Stop Guidance
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF0F172A), RoundedCornerShape(8.dp))
                     .border(1.dp, OutlineDark, RoundedCornerShape(8.dp))
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(8.dp)
             ) {
-                Column {
-                    Text(text = "🎯 نطاق الدخول المثالي", fontSize = 10.sp, color = TextMuted)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(text = "🎯 نطاق الدخول", fontSize = 10.sp, color = TextMuted)
+                        Text(
+                            text = stock.entryRangeFormatted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentCyan
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "🛑 وقف الخسارة", fontSize = 10.sp, color = TextMuted)
+                        Text(
+                            text = "${stock.stopLossFormatted} (-${stock.riskPct}%)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BearishRed
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(text = "🏁 المستهدف 1", fontSize = 10.sp, color = TextMuted)
+                        Text(
+                            text = "${stock.target1Formatted} (+${stock.targetPct}%)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BullishGreen
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = OutlineDark.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 5.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = stock.entryRangeFormatted,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "🚀 المستهدف 2: ${stock.target2Formatted} (+${String.format(java.util.Locale.US, "%.1f", stock.targetPct * 1.8)}%)",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = AccentCyan
                     )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "🛑 وقف الخسارة", fontSize = 10.sp, color = TextMuted)
                     Text(
-                        text = "${stock.stopLossFormatted} (-${stock.riskPct}%)",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BearishRed
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(text = "🏁 المستهدف الأول", fontSize = 10.sp, color = TextMuted)
-                    Text(
-                        text = "${stock.target1Formatted} (+${stock.targetPct}%)",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BullishGreen
+                        text = "🛡️ عند هدف 1: احجز 50% وارفع الوقف للدخول",
+                        fontSize = 9.sp,
+                        color = GoldenAmber
                     )
                 }
             }

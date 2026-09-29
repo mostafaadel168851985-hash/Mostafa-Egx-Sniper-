@@ -26,6 +26,9 @@ interface TradeDao {
 
     @Query("SELECT COUNT(*) FROM trades")
     suspend fun getTradesCount(): Int
+
+    @Query("DELETE FROM trades")
+    suspend fun clearAllTrades()
 }
 
 @Dao

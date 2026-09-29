@@ -122,6 +122,8 @@ class StockRepository(
 
     suspend fun deleteTrade(id: Long) = tradeDao.deleteTradeById(id)
 
+    suspend fun clearAllTrades() = tradeDao.clearAllTrades()
+
     // Alerts Flow & Actions
     val allAlerts: Flow<List<AlertEntity>> = alertDao.getAllAlerts()
     val unreadAlerts: Flow<List<AlertEntity>> = alertDao.getUnreadAlerts()

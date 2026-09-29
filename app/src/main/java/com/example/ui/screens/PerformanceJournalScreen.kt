@@ -23,12 +23,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,6 +42,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,10 +74,10 @@ import com.example.ui.theme.TextSecondary
 import java.util.Locale
 
 enum class JournalFilter(val label: String) {
-    ALL("الكل 🌐"),
     TOMORROW("مرشح الغد 🎯"),
-    EARLY_UPTREND("بداية الصعود 🚀"),
+    ALL("الكل 🌐"),
     BREAKOUTS("فرص الاختراق ⚡"),
+    EARLY_UPTREND("بداية الصعود 🚀"),
     SUPPORT_BOUNCE("صيد القيعان 💎"),
     CORRECTIONS("صيد التصحيح 🌊")
 }
@@ -82,20 +86,26 @@ enum class JournalFilter(val label: String) {
 fun PerformanceJournalScreen(
     trades: List<TradeEntity>,
     currentStocks: List<StockData>,
-    onSnapshotScreeners: () -> Unit,
+    onSnapshotTomorrowOnly: () -> Unit,
+    onSnapshotAllScreeners: () -> Unit,
     onAutoAudit: () -> Unit,
+    onClearAllTrades: () -> Unit,
     onUpdateStatus: (Long, String, Double?) -> Unit,
     onDeleteTrade: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedFilter by remember { mutableStateOf(JournalFilter.ALL) }
+    var selectedFilter by remember { mutableStateOf(JournalFilter.TOMORROW) }
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
 
     // Filter trades based on selected strategy
     val filteredTrades = remember(trades, selectedFilter) {
         if (selectedFilter == JournalFilter.ALL) {
             trades
         } else {
-            trades.filter { it.tradeType.contains(selectedFilter.label.replace(" ", "").take(5)) || it.tradeType.contains(selectedFilter.name) }
+            trades.filter {
+                it.tradeType.contains(selectedFilter.label.replace(" ", "").take(5)) ||
+                it.tradeType.contains(selectedFilter.name)
+            }
         }
     }
 
@@ -116,6 +126,46 @@ fun PerformanceJournalScreen(
 
     val stockMap = remember(currentStocks) { currentStocks.associateBy { it.symbol } }
 
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.DeleteForever, contentDescription = null, tint = BearishRed)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("مسح سجل التدقيق بالكامل 🗑️", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                }
+            },
+            text = {
+                Text(
+                    text = "هل أنت متأكد من مسح جميع صفقات وسجلات التدقيق المحفوظة للبدء من جديد وبسجل نظيف؟\n\nلن يمكن استعادة السجلات المحذوفة.",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showClearConfirmDialog = false
+                        onClearAllTrades()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BearishRed),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("نعم، مسح الكل 🗑️", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("إلغاء", color = TextSecondary)
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            shape = RoundedCornerShape(14.dp)
+        )
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -131,59 +181,93 @@ fun PerformanceJournalScreen(
                 Icon(
                     Icons.Default.QueryStats,
                     contentDescription = null,
-                    tint = BullishGreen,
+                    tint = GoldenAmber,
                     modifier = Modifier.size(26.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "تدقيق وقياس دقة فلاتر التطبيق 📊",
+                        text = "تدقيق وقياس دقة التوصيات 🎯",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = TextPrimary
                     )
                     Text(
-                        text = "تتبع آلي لنتائج المرشحات، بداية الصعود، والاختراقات مع الأسعار الحية",
+                        text = "قياس نجاح مرشحات اليوم القادم وفلاتر البورصة بدقة واحترافية",
                         fontSize = 11.sp,
                         color = TextSecondary
                     )
                 }
+
+                // Clear All Button in top corner
+                IconButton(
+                    onClick = { showClearConfirmDialog = true },
+                    modifier = Modifier
+                        .background(SurfaceVariantDark, RoundedCornerShape(10.dp))
+                        .size(36.dp)
+                        .testTag("btn_clear_audit_journal")
+                ) {
+                    Icon(Icons.Default.DeleteForever, contentDescription = "مسح السجل", tint = BearishRed, modifier = Modifier.size(20.dp))
+                }
             }
         }
 
-        // Action Buttons: Snapshot Screeners & Auto-Audit
+        // Primary Hero Action: Snapshot Tomorrow Picks ONLY
         item {
             Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onSnapshotTomorrowOnly,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("btn_snapshot_tomorrow_only"),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F291E)),
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, BullishGreen)
+            ) {
+                Icon(Icons.Default.Star, contentDescription = null, tint = GoldenAmber, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "🎯 حفظ مرشحات الغد فقط (أفضل 3-5 أسهم لليوم القادم)",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+
+        // Secondary Actions Row: Live Auto-Audit & Snapshot All
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = onSnapshotScreeners,
+                    onClick = onAutoAudit,
                     modifier = Modifier
-                        .weight(1f)
-                        .testTag("btn_snapshot_screeners"),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldenAmber)
+                        .weight(1.2f)
+                        .testTag("btn_auto_audit"),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A)),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AccentCyan)
                 ) {
-                    Icon(Icons.Default.CameraAlt, contentDescription = null, tint = GoldenAmber, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("حفظ لقطة اليوم 📸", color = GoldenAmber, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("تدقيق آلي بالأسعار الحية 🔄", color = AccentCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Button(
-                    onClick = onAutoAudit,
+                    onClick = onSnapshotAllScreeners,
                     modifier = Modifier
                         .weight(1f)
-                        .testTag("btn_auto_audit"),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A)),
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AccentCyan)
+                        .testTag("btn_snapshot_all_screeners"),
+                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, OutlineDark)
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, tint = TextMuted, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("تدقيق آلي بالأسعار 🔄", color = AccentCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("حفظ كل الفلاتر 📸", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -224,13 +308,13 @@ fun PerformanceJournalScreen(
             }
         }
 
-        // Stats Hero Card (Dynamic according to selected filter)
+        // Stats Hero Card
         item {
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, BullishGreen.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
+                    .border(1.dp, if (selectedFilter == JournalFilter.TOMORROW) GoldenAmber else BullishGreen.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A))
             ) {
@@ -242,7 +326,7 @@ fun PerformanceJournalScreen(
                     ) {
                         Column {
                             Text(
-                                text = "دقة فلتر: ${selectedFilter.label}",
+                                text = "دقة قسم: ${selectedFilter.label}",
                                 fontSize = 11.sp,
                                 color = GoldenAmber,
                                 fontWeight = FontWeight.Bold
@@ -256,7 +340,7 @@ fun PerformanceJournalScreen(
                         }
 
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(text = "متوسط ربح الصفقات الناجحة", fontSize = 10.sp, color = TextMuted)
+                            Text(text = "متوسط ربح الصفقات الرابحة", fontSize = 10.sp, color = TextMuted)
                             Text(
                                 text = "+${String.format(Locale.US, "%.1f", avgWinGainPct)}%",
                                 fontSize = 18.sp,
@@ -264,31 +348,52 @@ fun PerformanceJournalScreen(
                                 color = BullishGreen
                             )
                             Text(
-                                text = "العائد/المخاطرة: 1 : ${String.format(Locale.US, "%.2f", avgRR)}",
+                                text = "معدل العائد/المخاطرة: 1 : ${String.format(Locale.US, "%.2f", avgRR)}",
                                 fontSize = 10.sp,
                                 color = AccentCyan
                             )
                         }
                     }
 
-                    HorizontalDivider(color = OutlineDark, modifier = Modifier.padding(vertical = 12.dp))
+                    HorizontalDivider(color = OutlineDark, modifier = Modifier.padding(vertical = 10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        StatColumn(title = "توصيات الفلتر", value = "$totalTrades", color = TextPrimary)
+                        StatColumn(title = "إجمالي الأسهم", value = "$totalTrades", color = TextPrimary)
                         StatColumn(title = "حققت الهدف 🟢", value = "$hitTargetCount", color = BullishGreen)
-                        StatColumn(title = "ضربت الوقف 🔴", value = "$stoppedOutCount", color = BearishRed)
+                        StatColumn(title = "كسرت الوقف 🔴", value = "$stoppedOutCount", color = BearishRed)
                         StatColumn(title = "قيد الحركة ⏳", value = "$pendingCount", color = GoldenAmber)
                     }
                 }
             }
         }
 
+        // Explanatory Note on Audit Calculation
+        item {
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF1E293B).copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Info, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "القياس الذكي: تُحسب الصفقة ناجحة فور ملامسة أعلى سعر اليوم (High) للمستهدف، وخاسرة إذا كسر أدنى سعر (Low) نقطة الوقف.",
+                    fontSize = 10.sp,
+                    color = TextSecondary,
+                    lineHeight = 15.sp
+                )
+            }
+        }
+
         // List Header
         item {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -301,7 +406,7 @@ fun PerformanceJournalScreen(
                     color = TextPrimary
                 )
                 Text(
-                    text = "متابعة الأسعار لحظية ⚡",
+                    text = "متابعة دقيقة لحظة بلحظة ⚡",
                     fontSize = 10.sp,
                     color = AccentCyan
                 )
@@ -314,7 +419,7 @@ fun PerformanceJournalScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 40.dp),
+                        .padding(vertical = 35.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -326,14 +431,14 @@ fun PerformanceJournalScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "لا توجد صفقات مسجلة لهذا الفلتر بعد",
+                            text = "لا توجد أسهم مسجلة لـ ${selectedFilter.label}",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "اضغط على زر (حفظ لقطة اليوم 📸) لحفظ وتقييم كل فلاتر اليوم تلقائياً",
+                            text = "اضغط على زر (حفظ مرشحات الغد فقط 🎯) لحفظ وتقييم أسهم الغد بدقة",
                             fontSize = 11.sp,
                             color = TextMuted
                         )
@@ -345,7 +450,7 @@ fun PerformanceJournalScreen(
                 val currentStock = stockMap[trade.symbol]
                 TradeAuditorItemCard(
                     trade = trade,
-                    currentLivePrice = currentStock?.price ?: trade.entryPrice,
+                    currentStock = currentStock,
                     onUpdateStatus = { status, profit -> onUpdateStatus(trade.id, status, profit) },
                     onDelete = { onDeleteTrade(trade.id) }
                 )
@@ -366,10 +471,12 @@ private fun StatColumn(title: String, value: String, color: Color) {
 @Composable
 private fun TradeAuditorItemCard(
     trade: TradeEntity,
-    currentLivePrice: Double,
+    currentStock: StockData?,
     onUpdateStatus: (String, Double?) -> Unit,
     onDelete: () -> Unit
 ) {
+    val currentLivePrice = currentStock?.price ?: trade.entryPrice
+
     val currentProfitPct = if (trade.status == "pending") {
         if (trade.entryPrice > 0.0) {
             ((currentLivePrice - trade.entryPrice) / trade.entryPrice) * 100.0
@@ -414,7 +521,7 @@ private fun TradeAuditorItemCard(
                         )
                     }
                     Text(
-                        text = "${trade.tradeType} • تاريخ الإشارة: ${trade.dateRecorded}",
+                        text = "${trade.tradeType} • إشارة: ${trade.dateRecorded}",
                         fontSize = 10.sp,
                         color = TextMuted
                     )
@@ -484,6 +591,13 @@ private fun TradeAuditorItemCard(
                         fontWeight = FontWeight.Black,
                         color = if (currentLivePrice >= trade.entryPrice) BullishGreen else BearishRed
                     )
+                    if (currentStock != null) {
+                        Text(
+                            text = "أعلى: ${String.format(Locale.US, "%.2f", currentStock.high)}",
+                            fontSize = 8.sp,
+                            color = TextMuted
+                        )
+                    }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = "المستهدف (+${String.format(Locale.US, "%.1f", trade.targetPct)}%)", fontSize = 9.sp, color = TextMuted)
