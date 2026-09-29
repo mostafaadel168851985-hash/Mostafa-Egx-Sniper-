@@ -353,7 +353,8 @@ fun AnalyzeStockScreen(
                     onSelectStock = onSelectStock,
                     onRecordTrade = onRecordTrade,
                     onCalculateAverage = onCalculateAverage,
-                    onToggleAlert = onToggleAlert
+                    onToggleAlert = onToggleAlert,
+                    portfolioCapital = uiState.portfolioCapital
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))

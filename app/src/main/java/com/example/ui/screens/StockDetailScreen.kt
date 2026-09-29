@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,13 +81,16 @@ fun StockDetailScreen(
     onBack: () -> Unit,
     onCalculateAverage: (StockData) -> Unit,
     onRecordTrade: (StockData) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    portfolioCapital: Double = 50000.0,
+    onNavigateToPortfolio: () -> Unit = {}
 ) {
     BackHandler { onBack() }
     val context = LocalContext.current
 
-    var dealBudgetInput by remember { mutableStateOf("10000") }
-    val dealBudget = dealBudgetInput.toDoubleOrNull() ?: 10000.0
+    val initialBudget = (portfolioCapital * 0.20).coerceAtLeast(1000.0)
+    var dealBudgetInput by remember(portfolioCapital) { mutableStateOf(String.format(Locale.US, "%.0f", initialBudget)) }
+    val dealBudget = dealBudgetInput.toDoubleOrNull() ?: initialBudget
 
     val isBullish = stock.change >= 0
     val changeColor = if (isBullish) BullishGreen else BearishRed
@@ -428,7 +432,30 @@ fun StockDetailScreen(
                             )
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "💼 محسوبة تلقائياً: 20% من محفظتك (${String.format(Locale.US, "%,.0f", portfolioCapital)} ج)",
+                                fontSize = 10.sp,
+                                color = BullishGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "تعديل المحفظة ⚙️",
+                                fontSize = 11.sp,
+                                color = AccentCyan,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .clickable { onNavigateToPortfolio() }
+                                    .padding(vertical = 2.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         val entryLvl1 = stock.entryPrice
                         val entryLvl2 = stock.s1

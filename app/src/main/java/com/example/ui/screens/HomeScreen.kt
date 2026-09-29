@@ -22,6 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.FilterAlt
@@ -310,6 +312,51 @@ fun HomeScreen(
             }
         }
 
+        // Portfolio Capital & Allocation Hub Card
+        item {
+            Spacer(modifier = Modifier.height(10.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, GoldenAmber.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                    .clickable { onNavigate(NavScreen.PORTFOLIO_ALLOCATION) }
+                    .testTag("card_portfolio_hub"),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF141F1A))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(GoldenAmber.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = GoldenAmber, modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "رأس مال المحفظة: ${String.format(java.util.Locale.US, "%,.0f", uiState.portfolioCapital)} ج.م 💼",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "ميزانية الصفقة: ${String.format(java.util.Locale.US, "%,.0f", uiState.defaultDealBudget)} ج • اضغط للتوزيع الأمثل",
+                            fontSize = 11.sp,
+                            color = GoldenAmber
+                        )
+                    }
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = TextMuted)
+                }
+            }
+        }
+
         // Direct Instant Stock Analyzer Card
         item {
             Spacer(modifier = Modifier.height(14.dp))
@@ -508,7 +555,8 @@ fun HomeScreen(
                     onSelectStock = onSelectStock,
                     onRecordTrade = onRecordTrade,
                     onCalculateAverage = onCalculateAverage,
-                    onToggleAlert = onToggleAlert
+                    onToggleAlert = onToggleAlert,
+                    portfolioCapital = uiState.portfolioCapital
                 )
             }
         }

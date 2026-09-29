@@ -72,10 +72,15 @@ fun StockCard(
     onRecordTrade: (StockData) -> Unit,
     onCalculateAverage: (StockData) -> Unit,
     onToggleAlert: (StockData) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    portfolioCapital: Double = 50000.0
 ) {
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
+
+    val dealBudget = portfolioCapital * 0.20 // 20% of portfolio
+    val recommendedShares = if (stock.entryPrice > 0) (dealBudget / stock.entryPrice).toLong() else 0L
+    val maxRiskEgp = portfolioCapital * 0.02 // 2% risk
 
     val isBullish = stock.change >= 0
     val changeColor = if (isBullish) BullishGreen else BearishRed
@@ -347,6 +352,32 @@ fun StockCard(
                         text = "🛡️ عند هدف 1: احجز 50% وارفع الوقف للدخول",
                         fontSize = 9.sp,
                         color = GoldenAmber
+                    )
+                }
+            }
+
+            // Calculated Deal Budget Box (20% of Portfolio)
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0C2417), RoundedCornerShape(8.dp))
+                    .border(1.dp, BullishGreen.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "💼 ميزانية الصفقة: ${String.format(Locale.US, "%,.0f", dealBudget)} ج (20% من المحفظة)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BullishGreen
+                    )
+                    Text(
+                        text = "🔢 الكمية المقترحة: ${String.format(Locale.US, "%,d", recommendedShares)} سهم • أقصى مخاطرة: -${String.format(Locale.US, "%,.0f", maxRiskEgp)} ج",
+                        fontSize = 10.sp,
+                        color = TextSecondary
                     )
                 }
             }

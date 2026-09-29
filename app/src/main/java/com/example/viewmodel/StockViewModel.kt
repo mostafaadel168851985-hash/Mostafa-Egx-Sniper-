@@ -30,7 +30,8 @@ enum class NavScreen {
     AVERAGE_CALCULATOR,
     ALERTS,
     JOURNAL,
-    STOCK_DETAIL
+    STOCK_DETAIL,
+    PORTFOLIO_ALLOCATION
 }
 
 enum class ScreenerFilter(val arabicTitle: String) {
@@ -56,6 +57,10 @@ data class StockUiState(
     val userMessage: String? = null,
     val lastUpdatedTime: String = "",
     val isAutoRefreshActive: Boolean = true,
+    // Portfolio Capital Management:
+    val portfolioCapital: Double = 50000.0,
+    val riskPerTradePct: Double = 2.0,
+    val maxSingleStockAllocPct: Double = 20.0,
     // Corporate Actions & News State:
     val corporateNews: List<CorporateNews> = emptyList(),
     val selectedCorporateCategory: CorporateCategory = CorporateCategory.ALL,
@@ -67,6 +72,11 @@ data class StockUiState(
     val isSearchingStock: Boolean = false,
     val analyzeErrorMessage: String? = null
 ) {
+    val defaultDealBudget: Double
+        get() = portfolioCapital * (maxSingleStockAllocPct / 100.0)
+
+    val maxRiskPerTradeEgp: Double
+        get() = portfolioCapital * (riskPerTradePct / 100.0)
     val filteredCorporateNews: List<CorporateNews>
         get() {
             var list = corporateNews
@@ -348,6 +358,16 @@ class StockViewModel(
         viewModelScope.launch {
             repository.deleteTrade(id)
             _uiState.update { it.copy(userMessage = "تم حذف الصفقة") }
+        }
+    }
+
+    fun updatePortfolioCapital(capital: Double, riskPct: Double = _uiState.value.riskPerTradePct) {
+        _uiState.update {
+            it.copy(
+                portfolioCapital = capital.coerceAtLeast(1000.0),
+                riskPerTradePct = riskPct.coerceIn(0.5, 10.0),
+                userMessage = "تم حفظ رأس مال المحفظة: ${String.format(java.util.Locale.US, "%,.0f", capital)} ج بنجاح 💼"
+            )
         }
     }
 

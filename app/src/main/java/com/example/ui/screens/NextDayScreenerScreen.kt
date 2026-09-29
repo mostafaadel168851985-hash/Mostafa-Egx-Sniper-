@@ -310,7 +310,8 @@ fun NextDayScreenerScreen(
                     onSelectStock = onSelectStock,
                     onRecordTrade = onRecordTrade,
                     onCalculateAverage = onCalculateAverage,
-                    onToggleAlert = onToggleAlert
+                    onToggleAlert = onToggleAlert,
+                    portfolioCapital = uiState.portfolioCapital
                 )
             }
         }

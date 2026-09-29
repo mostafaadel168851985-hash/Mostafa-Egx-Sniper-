@@ -62,6 +62,7 @@ import com.example.ui.screens.CorporateNewsScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.NextDayScreenerScreen
 import com.example.ui.screens.PerformanceJournalScreen
+import com.example.ui.screens.PortfolioAllocationScreen
 import com.example.ui.screens.StockDetailScreen
 import com.example.ui.theme.AccentCyan
 import com.example.ui.theme.BackgroundDark
@@ -356,12 +357,24 @@ fun EgxSniperApp(
                             stock = stock,
                             onBack = { viewModel.navigateTo(NavScreen.HOME) },
                             onCalculateAverage = { viewModel.navigateTo(NavScreen.AVERAGE_CALCULATOR, stock) },
-                            onRecordTrade = { viewModel.recordTrade(stock, "تحليل مفصل") }
+                            onRecordTrade = { viewModel.recordTrade(stock, "تحليل مفصل") },
+                            portfolioCapital = uiState.portfolioCapital,
+                            onNavigateToPortfolio = { viewModel.navigateTo(NavScreen.PORTFOLIO_ALLOCATION) }
                         )
                     } ?: run {
                         viewModel.navigateTo(NavScreen.HOME)
                     }
                 }
+
+                NavScreen.PORTFOLIO_ALLOCATION -> PortfolioAllocationScreen(
+                    currentCapital = uiState.portfolioCapital,
+                    currentRiskPct = uiState.riskPerTradePct,
+                    onSavePortfolio = { capital, risk ->
+                        viewModel.updatePortfolioCapital(capital, risk)
+                        viewModel.navigateTo(NavScreen.HOME)
+                    },
+                    onBack = { viewModel.navigateTo(NavScreen.HOME) }
+                )
             }
         }
     }
