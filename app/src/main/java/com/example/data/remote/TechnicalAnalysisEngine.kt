@@ -16,7 +16,7 @@ object TechnicalAnalysisEngine {
         "📡 الاتصالات والتكنولوجيا" to listOf("ETEL", "OTMT", "TE", "EMOB", "EGS", "FWRY", "RAYA", "BTFH", "MTIE"),
         "🏭 البتروكيماويات والصناعات" to listOf("ESRS", "MFPC", "SKPC", "ABUK", "EFIC", "EGCH", "MICH", "AMOC", "EKHO", "SWDY", "SIDPEC"),
         "💊 الرعاية الصحية والأدوية" to listOf("PHAR", "ISPH", "RMDA", "MCRO", "SPMD", "AXPH"),
-        "🛒 التجارة والخدمات" to listOf("AUTO", "ELSE", "MENA", "CAPI", "PRDC", "MOIL")
+        "🛒 التجارة والخدمات" to listOf("AUTO", "GBCO", "ELSE", "MENA", "CAPI", "PRDC", "MOIL")
     )
 
     fun detectSector(symbol: String): String {

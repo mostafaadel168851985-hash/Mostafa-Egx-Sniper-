@@ -33,7 +33,8 @@ object EgyptianStockDirectory {
         StockInfo("EFIH", "إي فاينانس للاستثمارات المالية", "📡 الاتصالات والتكنولوجيا", listOf("اي فاينانس", "إي فاينانس", "efih", "efinance")),
         StockInfo("ORWE", "النساجون الشرقيون للسجاد", "🍔 الأغذية والمشروبات", listOf("النساجون", "نساجون", "سجاد", "orwe", "oriental")),
         StockInfo("EAST", "الشرقية - إيسترن كومباني", "🍔 الأغذية والمشروبات", listOf("الشرقية للدخان", "إيسترن", "دخان", "سجائر", "east", "eastern")),
-        StockInfo("AUTO", "جي بي كورب (غبور أوتو)", "🛒 التجارة والخدمات", listOf("غبور", "جي بي", "سيارات", "auto", "gb corp")),
+        StockInfo("GBCO", "جي بي كورب (غبور أوتو)", "🛒 التجارة والخدمات", listOf("غبور", "جي بي", "سيارات", "auto", "gbco", "gb corp", "ghabbour")),
+        StockInfo("AUTO", "جي بي كورب (غبور أوتو)", "🛒 التجارة والخدمات", listOf("غبور", "جي بي", "سيارات", "auto", "gbco", "gb corp")),
         StockInfo("DOMT", "الصناعات الغذائية العربية (دومتي)", "🍔 الأغذية والمشروبات", listOf("دومتي", "جبنة", "domt", "domty")),
         StockInfo("CLHO", "مستشفى كليوباترا", "💊 الرعاية الصحية والأدوية", listOf("كليوباترا", "مستشفى", "clho", "cleopatra")),
         StockInfo("EMFD", "إعمار مصر للتنمية", "🏗️ العقارات", listOf("اعمار", "إعمار", "emfd", "emaar")),
@@ -76,7 +77,7 @@ object EgyptianStockDirectory {
     val EGX30_SYMBOLS: Set<String> = setOf(
         "COMI", "TMGH", "ETEL", "SWDY", "FWRY", "ABUK", "MFPC", "SKPC",
         "ESRS", "BTFH", "HELI", "PHDC", "ORAS", "JUFO", "AMOC", "CIEB",
-        "MNHD", "EKHO", "EFIH", "EAST", "AUTO", "EMFD", "EFID", "EGAL",
+        "MNHD", "EKHO", "EFIH", "EAST", "AUTO", "GBCO", "EMFD", "EFID", "EGAL",
         "OCDI", "CLHO", "ORWE", "RAYA", "ADIB", "QNBA"
     )
 
