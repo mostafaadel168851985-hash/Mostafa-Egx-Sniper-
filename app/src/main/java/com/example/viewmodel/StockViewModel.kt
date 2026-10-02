@@ -115,15 +115,25 @@ data class StockUiState(
             // Filter by screener strategy
             return when (activeScreenerFilter) {
                 ScreenerFilter.TOMORROW_PICKS -> {
-                    val picks = list.filter { it.isTomorrowPick }
-                    if (picks.isNotEmpty()) {
-                        picks.sortedWith(compareByDescending<StockData> { it.smartScore }.thenByDescending { it.riskRewardRatio })
+                    // Strict Elite 1-Day Safe Picks (At most 5 stocks for quick, safe 1-day trade):
+                    val candidates = list.filter { it.isTomorrowPick }
+                    val sortedCandidates = if (candidates.isNotEmpty()) {
+                        candidates.sortedWith(
+                            compareByDescending<StockData> { it.confidenceGrade == "A+" }
+                                .thenByDescending { it.smartScore }
+                                .thenByDescending { it.dailyTurnover }
+                                .thenByDescending { it.riskRewardRatio }
+                        )
                     } else {
-                        // High-conviction fallback: Top picks sorted by Smart Score and Confidence so user always gets actionable recommendations
-                        list.filter { it.price > 0.0 }
-                            .sortedWith(compareByDescending<StockData> { it.smartScore }.thenByDescending { it.riskRewardRatio })
-                            .take(12)
+                        // Safe fallback: Top liquid stocks in EGX with healthy RSI & strong score
+                        list.filter { it.price > 0.0 && it.dailyTurnover >= 3_000_000 && it.rsi in 35.0..70.0 }
+                            .sortedWith(
+                                compareByDescending<StockData> { it.smartScore }
+                                    .thenByDescending { it.dailyTurnover }
+                                    .thenByDescending { it.riskRewardRatio }
+                            )
                     }
+                    sortedCandidates.take(5)
                 }
                 ScreenerFilter.SHARIAH -> list.filter { it.isShariahCompliant }
                     .sortedByDescending { it.smartScore }

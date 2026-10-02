@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -90,7 +91,7 @@ fun NextDayScreenerScreen(
 
     val filterDescription = when (uiState.activeScreenerFilter) {
         ScreenerFilter.TOMORROW_PICKS ->
-            "🎯 مرشحات جلسة الغد: أسهم بأعلى نسب نجاح، ومستويات دخول دقيقة مع نسبة عائد لمخاطرة R:R لا تقل عن 1.8 وتأكيد المتوسطات التاريخية 50 و 200 يوم."
+            "🎯 صفوة أسهم الغد (Top 5 Safe Picks): أفضل 5 أسهم منتقاة بعناية لصفقة سريعة ليوم واحد (مستهدف ربح +2% إلى +5% مع سيولة عالية للخروج الفوري ووقف خسارة حاسم -1.8%)."
         ScreenerFilter.SHARIAH ->
             "☪️ أسهم الشريعة الإسلامية: أسهم منتقاة ومتوافقة مع المعايير والضوابط الشرعية المعتمدة في البورصة المصرية."
         ScreenerFilter.CORRECTIONS ->
@@ -304,7 +305,48 @@ fun NextDayScreenerScreen(
                 }
             }
         } else {
-            items(uiState.filteredStocks, key = { it.symbol }) { stock ->
+            itemsIndexed(uiState.filteredStocks, key = { _, stock -> stock.symbol }) { index, stock ->
+                if (uiState.activeScreenerFilter == ScreenerFilter.TOMORROW_PICKS) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = if (index == 0) 4.dp else 10.dp, bottom = 2.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = when (index) {
+                                    0 -> "🥇 الاختيار #1 (الأعلى أماناً وسيولة)"
+                                    1 -> "🥈 الاختيار #2 (زخم ارتدادي قوي)"
+                                    2 -> "🥉 الاختيار #3 (اختراق محسوب)"
+                                    3 -> "🏅 الاختيار #4 (دعم رئيسي)"
+                                    else -> "🏅 الاختيار #5 (فرصة سوينغ)"
+                                },
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when (index) {
+                                    0 -> GoldenAmber
+                                    1 -> AccentCyan
+                                    else -> BullishGreen
+                                }
+                            )
+                            Text(
+                                text = "هدف اليوم: +2.5% إلى +5% | وقف: -1.8%",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                }
+
                 StockCard(
                     stock = stock,
                     onSelectStock = onSelectStock,

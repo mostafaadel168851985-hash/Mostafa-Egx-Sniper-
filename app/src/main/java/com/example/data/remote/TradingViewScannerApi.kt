@@ -668,9 +668,14 @@ class TradingViewScannerApi {
             val isEarlyUptrend = (upsideTo52wHigh >= 20.0) && (trendShort == "صاعد" || p >= sma20) &&
                     (rsi in 44.0..65.0) && (chg > -0.5) && (perf1m > -10.0) && (dailyTurnover >= 2_500_000)
 
-            // 5. Tomorrow Pick (مرشح الغد الناري - صفوة الأسهم ذات الاحتمالية الأعلى مرونة ودقة):
-            val isTomorrowPick = (smartScore >= 55 && (confGrade in listOf("A+", "A", "B")) && rsi in 38.0..74.0 && chg > -2.0 && rr >= 1.3) ||
-                    (isRapidBreakout || isEarlyUptrend || (isGoldenCross && chg > 0.0) || (isSupportBounce && chg > 0.3))
+            // 5. Tomorrow Pick (مرشح الغد عالي الأمان لصفقة سريعة +2% إلى +5%):
+            val isTomorrowPick = (dailyTurnover >= 5_000_000 || volume >= 500_000) &&
+                    (smartScore >= 65) &&
+                    (confGrade in listOf("A+", "A")) &&
+                    (rsi in 40.0..68.0) &&
+                    (trendShort == "صاعد" || p >= sma20) &&
+                    (chg in -1.5..4.5) &&
+                    (rr >= 1.6)
 
             // Advanced Technical Indicators (EMA 20/50/200, MACD, OBV)
             val ema20 = round3(if (d.length() > 19 && !d.isNull(19)) d.optDouble(19, sma20) else sma20)

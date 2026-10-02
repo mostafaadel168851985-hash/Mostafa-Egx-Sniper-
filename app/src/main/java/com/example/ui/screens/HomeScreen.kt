@@ -213,14 +213,14 @@ fun HomeScreen(
             val breakoutsCount = uiState.allStocks.count { it.isRapidBreakout }
             val correctionsCount = uiState.allStocks.count { it.isCorrectionHunter }
             val earlyUptrendCount = uiState.allStocks.count { it.isEarlyUptrend }
-            val tomorrowPicksCount = uiState.allStocks.count { it.isTomorrowPick }
+            val tomorrowPicksCount = minOf(5, uiState.allStocks.count { it.isTomorrowPick }.takeIf { it > 0 } ?: 5)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 QuickStatCard(
-                    title = "مرشحات الغد",
+                    title = "صفوة الغد (Top 5)",
                     count = "$tomorrowPicksCount",
                     color = BullishGreen,
                     modifier = Modifier
