@@ -102,7 +102,16 @@ fun StockFinancialAnalysisCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Text(
+                text = financial.dataSourceBadge,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                color = AccentCyan
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Verdict & Growth Stage Banner
             Row(
