@@ -73,6 +73,7 @@ data class StockData(
     val isSupportBounce: Boolean,
     val isEarlyUptrend: Boolean,
     val isTomorrowPick: Boolean,
+    val tomorrowScore: Int = 0, // ترتيب دقيق لمرشحي المضاربة السريعة ليوم الغد (0-100)
     val isShariahCompliant: Boolean = false,
     val indexBelonging: String = "EGX30",
     val screenerReasons: List<String>,
