@@ -38,6 +38,18 @@ object TechnicalAnalysisEngine {
         }
     }
 
+    /**
+     * يمنع اصطياد الأسهم "الميتة" (حركة ضعيفة جداً) كفرص مضاربة سريعة أو اختراق.
+     * نفس فلتر is_volatile_enough في النسخة الأصلية، لحماية المضارب السريع من أسهم بلا زخم حقيقي.
+     */
+    fun isVolatileEnough(volatility: Double): Pair<Boolean, String> {
+        return when {
+            volatility < 0.8 -> false to "❄️ تقلب ضعيف جداً (${volatility}%) - حركة بطيئة، غير مناسب للمضاربة السريعة"
+            volatility < 1.2 -> false to "⚠️ تقلب متوسط (${volatility}%) - مناسب فقط للاستثمار طويل الأجل، لا للمضاربة"
+            else -> true to "✅ تقلب جيد (${volatility}%) - مناسب للتداول والمضاربة"
+        }
+    }
+
     fun analyzeTurnover(price: Double, volume: Long, avgVolume: Long): Triple<String, Int, Double> {
         val dailyTurnover = price * volume
         val avgTurnover = if (avgVolume > 0) price * avgVolume else 1.0
