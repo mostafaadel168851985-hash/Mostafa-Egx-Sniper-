@@ -657,9 +657,10 @@ class TradingViewScannerApi {
             val isCorrectionHunter = (trendLong == "صاعد" || p > sma200) &&
                     (rsi in 30.0..52.0) && (chg > -1.2) && (dailyTurnover >= 3_000_000) && (distToS1 <= 2.5)
 
-            // 2. Rapid Breakout (اختراق سريع قوي مع سيولة حقيقية):
+            // 2. Rapid Breakout (اختراق سريع قوي مع سيولة حقيقية وتقلب كافٍ يمنع الأسهم الميتة):
             val isRapidBreakout = (rsi in 48.0..72.0) && (volumeRatio >= 1.25 || dailyTurnover >= 8_000_000) &&
-                    (p >= r1 * 0.97) && (breakoutQuality.score >= 50) && (trendShort == "صاعد")
+                    (p >= r1 * 0.97) && (breakoutQuality.score >= 50) && (trendShort == "صاعد") &&
+                    (volatility >= 1.0)
 
             // 3. Support Bounce (ارتداد حقيقي من الدعم):
             val isSupportBounce = (distToS1 in 0.0..1.8) && (chg in 0.0..4.0) && (rsi in 35.0..55.0) && (p >= s1) && (dailyTurnover >= 2_000_000)
@@ -668,14 +669,23 @@ class TradingViewScannerApi {
             val isEarlyUptrend = (upsideTo52wHigh >= 20.0) && (trendShort == "صاعد" || p >= sma20) &&
                     (rsi in 44.0..65.0) && (chg > -0.5) && (perf1m > -10.0) && (dailyTurnover >= 2_500_000)
 
-            // 5. Tomorrow Pick (مرشح الغد عالي الأمان لصفقة سريعة +2% إلى +5%):
+            // 5. Tomorrow Pick (مرشح الغد عالي الأمان لصفقة سريعة +2% إلى +5% - خاص بالمضارب السريع):
             val isTomorrowPick = (dailyTurnover >= 5_000_000 || volume >= 500_000) &&
                     (smartScore >= 65) &&
                     (confGrade in listOf("A+", "A")) &&
                     (rsi in 40.0..68.0) &&
                     (trendShort == "صاعد" || p >= sma20) &&
                     (chg in -1.5..4.5) &&
-                    (rr >= 1.6)
+                    (rr >= 1.6) &&
+                    (volatility >= 1.0) &&
+                    (candleStrength >= 0)
+
+            val tomorrowScore = (
+                (smartScore * 0.45) +
+                (breakoutQuality.score * 0.25) +
+                (min(100.0, volumeRatio * 40.0) * 0.15) +
+                (min(100.0, max(0.0, (candleStrength + 2) * 20.0)) * 0.15)
+            ).roundToInt().coerceIn(0, 100)
 
             // Advanced Technical Indicators (EMA 20/50/200, MACD, OBV)
             val ema20 = round3(if (d.length() > 19 && !d.isNull(19)) d.optDouble(19, sma20) else sma20)
@@ -778,6 +788,7 @@ class TradingViewScannerApi {
                 isSupportBounce = isSupportBounce,
                 isEarlyUptrend = isEarlyUptrend,
                 isTomorrowPick = isTomorrowPick,
+                tomorrowScore = tomorrowScore,
                 isShariahCompliant = EgyptianStockDirectory.isShariahCompliant(name),
                 indexBelonging = EgyptianStockDirectory.getIndexBelonging(name),
                 screenerReasons = screenerReasons,
