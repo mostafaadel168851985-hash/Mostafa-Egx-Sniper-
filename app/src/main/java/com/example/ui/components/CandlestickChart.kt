@@ -1,6 +1,8 @@
 package com.example.ui.components
 
 import android.annotation.SuppressLint
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -21,17 +23,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.CandlestickChart
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,9 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,17 +79,17 @@ data class CandlePoint(
 )
 
 enum class ChartViewMode(val title: String, val icon: String) {
-    LIVE_TRADINGVIEW("📈 الشارت الحقيقي المباشر (TradingView)", "📈"),
-    TECHNICAL_INDICATORS("📊 مؤشرات MACD و OBV و EMAs", "📊")
+    TECHNICAL_INDICATORS("🎯 مؤشرات الشراء والقرار الفني (MACD & EMA)", "🎯"),
+    LIVE_TRADINGVIEW("📈 الشارت المباشر (TradingView)", "📈")
 }
 
 @Composable
 fun CandlestickChart(
     stock: StockData,
     modifier: Modifier = Modifier,
-    heightDp: Int = 300
+    heightDp: Int = 320
 ) {
-    var mode by remember { mutableStateOf(ChartViewMode.LIVE_TRADINGVIEW) }
+    var mode by remember { mutableStateOf(ChartViewMode.TECHNICAL_INDICATORS) }
 
     Column(
         modifier = modifier
@@ -130,7 +135,8 @@ fun CandlestickChart(
             TradingViewLiveChartWidget(
                 symbol = stock.symbol,
                 isDark = TerminalTheme.isDark,
-                heightDp = heightDp
+                heightDp = heightDp,
+                onSwitchToIndicators = { mode = ChartViewMode.TECHNICAL_INDICATORS }
             )
         } else {
             TechnicalIndicatorsAndNativeChart(
@@ -146,86 +152,129 @@ fun CandlestickChart(
 private fun TradingViewLiveChartWidget(
     symbol: String,
     isDark: Boolean,
-    heightDp: Int
+    heightDp: Int,
+    onSwitchToIndicators: () -> Unit
 ) {
     val themeStr = if (isDark) "dark" else "light"
-    val bgColor = if (isDark) "#111827" else "#FFFFFF"
     val cleanSymbol = symbol.trim().uppercase()
-
-    val htmlData = remember(cleanSymbol, isDark) {
-        """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>
-                html, body {
-                    margin: 0;
-                    padding: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: $bgColor;
-                    overflow: hidden;
-                }
-                #tradingview_widget {
-                    width: 100%;
-                    height: 100%;
-                }
-            </style>
-        </head>
-        <body>
-            <div id="tradingview_widget"></div>
-            <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-            <script type="text/javascript">
-                try {
-                    new TradingView.widget({
-                        "autosize": true,
-                        "symbol": "EGX:$cleanSymbol",
-                        "interval": "D",
-                        "timezone": "Africa/Cairo",
-                        "theme": "$themeStr",
-                        "style": "1",
-                        "locale": "ar_AE",
-                        "toolbar_bg": "$bgColor",
-                        "enable_publishing": false,
-                        "hide_side_toolbar": false,
-                        "allow_symbol_change": false,
-                        "container_id": "tradingview_widget",
-                        "studies": [
-                            "MASimple@tv-basicstudies",
-                            "MACD@tv-basicstudies"
-                        ]
-                    });
-                } catch(e) {}
-            </script>
-        </body>
-        </html>
-        """.trimIndent()
+    val embedUrl = remember(cleanSymbol, isDark) {
+        "https://s.tradingview.com/widgetembed/?symbol=EGX%3A$cleanSymbol&interval=D&symboledit=1&saveimage=0&toolbarbg=${if (isDark) "111827" else "ffffff"}&theme=$themeStr&style=1&timezone=Africa%2FCairo&locale=ar_AE"
     }
+
+    var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
+    var reloadTrigger by remember { mutableStateOf(0) }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(heightDp.dp)
-            .background(SurfaceDark, RoundedCornerShape(10.dp))
+            .background(SurfaceVariantDark, RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
     ) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { context ->
-                WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.loadWithOverviewMode = true
-                    settings.useWideViewPort = true
-                    settings.cacheMode = WebSettings.LOAD_DEFAULT
-                    webViewClient = WebViewClient()
-                    loadDataWithBaseURL("https://www.tradingview.com", htmlData, "text/html", "UTF-8", null)
+        if (!hasError) {
+            key(reloadTrigger) {
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { context ->
+                    WebView(context).apply {
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.databaseEnabled = true
+                        settings.allowFileAccess = true
+                        settings.allowContentAccess = true
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        settings.cacheMode = WebSettings.LOAD_DEFAULT
+                        settings.userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
+                        
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                isLoading = false
+                            }
+
+                            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                                if (request?.isForMainFrame == true) {
+                                    hasError = true
+                                    isLoading = false
+                                }
+                            }
+                        }
+                        loadUrl(embedUrl)
+                    }
                 }
-            },
-            update = { webView ->
-                webView.loadDataWithBaseURL("https://www.tradingview.com", htmlData, "text/html", "UTF-8", null)
+            )
             }
-        )
+        }
+
+        if (isLoading && !hasError) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    color = AccentCyan,
+                    modifier = Modifier.size(32.dp),
+                    strokeWidth = 3.dp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "جاري تحميل شارت TradingView اللحظي...",
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+        }
+
+        if (hasError) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = GoldenAmber,
+                    modifier = Modifier.size(36.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "تعذر تحميل شارت TradingView المباشر",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "تأكد من الاتصال بالإنترنت أو استخدم الرسم البياني الفني المدمج",
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            hasError = false
+                            isLoading = true
+                            reloadTrigger++
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentCyan),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("إعادة المحاولة", color = Color.Black, fontSize = 11.sp)
+                    }
+                    Button(
+                        onClick = onSwitchToIndicators,
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceDark),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("الرسم الفني المدمج", color = TextPrimary, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -234,104 +283,204 @@ private fun TechnicalIndicatorsAndNativeChart(
     stock: StockData,
     heightDp: Int
 ) {
+    val price = stock.price
+    val ema20 = stock.ema20.takeIf { it > 0 } ?: stock.sma20
+    val ema50 = stock.ema50.takeIf { it > 0 } ?: stock.sma50
+    val ema200 = stock.ema200.takeIf { it > 0 } ?: stock.sma200
+    val macdLine = stock.macdLine
+    val macdSignal = stock.macdSignal
+    val macdHist = stock.macdHist
+
+    // Technical Evaluation
+    val isEmaBullish = price > ema20 && ema20 >= ema50
+    val isEmaPullback = price in (ema50 * 0.98)..(ema20 * 1.02)
+    val isMacdGoldenCross = macdLine >= macdSignal
+    val isMacdBullishHist = macdHist >= 0
+
+    // Clear Actionable Decision
+    val (decisionTitle, decisionDesc, decisionColor, decisionIcon) = when {
+        isEmaBullish && isMacdGoldenCross && isMacdBullishHist -> Quadruple(
+            "🟢 إشارة شراء قوية وتأكيد فني صاعد",
+            "المؤشرات في أفضل وضعية: السعر يتداول أعلى متوسطات 20 و 50 يوم مع تقاطع إيجابي للماكد وزخم شرائي قوي يدعم استمرار الصعود 🚀",
+            BullishGreen,
+            Icons.Default.TrendingUp
+        )
+        isEmaBullish && isMacdGoldenCross -> Quadruple(
+            "📈 ميل صاعد إيجابي (مناسب للشراء والدخول)",
+            "السعر فوق المتوسطات المتحركة والماكد في مسار صاعد، الاتجاه العام إيجابي ويدعم تحقيق المستهدفات.",
+            BullishGreen,
+            Icons.Default.TrendingUp
+        )
+        isEmaPullback || (isMacdGoldenCross && !isEmaBullish) -> Quadruple(
+            "⏳ منطقة مراقبة واختبار دعم (ترقب تأكيد الارتداد)",
+            "السعر يختبر متوسط الدعم 20/50 يوم مع بداية تشكل تقاطع إيجابي في الماكد؛ يفضل انتظار شمعة ارتداد خضراء قبل الشراء.",
+            GoldenAmber,
+            Icons.Default.Info
+        )
+        else -> Quadruple(
+            "⚠️ إشارة تصحيح وهبوط (لا ينصح بالشراء حالياً)",
+            "السعر يتداول أدنى المتوسطات المتحركة مع تقاطع بيعي لمؤشر MACD؛ تجنب الشراء اللحظي وانتظر استقرار السعر.",
+            BearishRed,
+            Icons.Default.TrendingDown
+        )
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        // EMAs Metric Row (EMA20, EMA50, EMA200)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SurfaceVariantDark, RoundedCornerShape(8.dp))
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // 1. Actionable Decision Card (بطاقة القرار الفني المباشر)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            colors = CardDefaults.cardColors(containerColor = decisionColor.copy(alpha = 0.12f)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, decisionColor.copy(alpha = 0.5f))
         ) {
-            Column {
-                Text(text = "EMA 20", fontSize = 9.sp, color = TextMuted)
-                Text(
-                    text = String.format(Locale.US, "%.2f ج", stock.ema20.takeIf { it > 0 } ?: stock.sma20),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AccentCyan
-                )
-            }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "EMA 50", fontSize = 9.sp, color = TextMuted)
-                Text(
-                    text = String.format(Locale.US, "%.2f ج", stock.ema50.takeIf { it > 0 } ?: stock.sma50),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = GoldenAmber
-                )
-            }
-
-            Column(horizontalAlignment = Alignment.End) {
-                Text(text = "EMA 200", fontSize = 9.sp, color = TextMuted)
-                Text(
-                    text = String.format(Locale.US, "%.2f ج", stock.ema200.takeIf { it > 0 } ?: stock.sma200),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AccentPurple
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // MACD & OBV Grid
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(SurfaceVariantDark, RoundedCornerShape(8.dp))
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // MACD Values
-            Column {
-                Text(text = "مؤشر MACD (12, 26, 9)", fontSize = 9.sp, color = TextMuted)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "الماكد: ${String.format(Locale.US, "%+.2f", stock.macdLine)}",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentCyan
-                    )
+            Column(modifier = Modifier.padding(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(decisionIcon, contentDescription = null, tint = decisionColor, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "الإشارة: ${String.format(Locale.US, "%+.2f", stock.macdSignal)}",
-                        fontSize = 10.sp,
-                        color = GoldenAmber
+                        text = decisionTitle,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = decisionColor
                     )
                 }
-                val isMacdBullish = stock.macdHist >= 0
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "الهيستوجرام: ${String.format(Locale.US, "%+.2f", stock.macdHist)} (${if (isMacdBullish) "زخم شرائي 🟢" else "زخم بيعي 🔴"})",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isMacdBullish) BullishGreen else BearishRed
-                )
-            }
-
-            // OBV & Volume Trend
-            Column(horizontalAlignment = Alignment.End) {
-                Text(text = "حجم التداول التراكمي (OBV)", fontSize = 9.sp, color = TextMuted)
-                Text(
-                    text = stock.obvTrend,
+                    text = decisionDesc,
                     fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = BullishGreen
-                )
-                Text(
-                    text = "مؤشر RSI: ${String.format(Locale.US, "%.1f", stock.rsi)}",
-                    fontSize = 9.sp,
-                    color = TextSecondary
+                    color = TextPrimary,
+                    lineHeight = 15.sp
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Native Candlestick Canvas
+        // 2. EMA Metric & Explanation Row
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)
+        ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(text = "EMA 20 (المتوسط السريع)", fontSize = 9.sp, color = TextMuted)
+                        Text(
+                            text = String.format(Locale.US, "%.2f ج", ema20),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentCyan
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "EMA 50 (المتوسط الرئيسي)", fontSize = 9.sp, color = TextMuted)
+                        Text(
+                            text = String.format(Locale.US, "%.2f ج", ema50),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldenAmber
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(text = "EMA 200 (الاتجاه التاريخي)", fontSize = 9.sp, color = TextMuted)
+                        Text(
+                            text = String.format(Locale.US, "%.2f ج", ema200),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentPurple
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                val emaExplanation = when {
+                    price > ema20 && ema20 > ema50 -> "✅ السعر يتداول أعلى كافة المتوسطات (دعم صاعد متتابع)"
+                    price > ema20 -> "📈 السعر يخترق متوسط 20 يوم للأعلى (إشارة دخول لحظية)"
+                    price in ema50..ema20 -> "⏳ السعر يصحح بين متوسط 20 و 50 يوم (منطقة ارتداد مرتقبة)"
+                    else -> "🔻 السعر أدنى متوسط 50 يوم (المتوسطات تمثل مقاومات تضغط على السعر)"
+                }
+                Text(
+                    text = emaExplanation,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (price > ema20) BullishGreen else GoldenAmber
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 3. MACD Metric & Explanation Row
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)
+        ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(text = "مؤشر MACD (12, 26, 9)", fontSize = 9.sp, color = TextMuted)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "الماكد: ${String.format(Locale.US, "%+.2f", macdLine)}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentCyan
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "الإشارة: ${String.format(Locale.US, "%+.2f", macdSignal)}",
+                                fontSize = 10.sp,
+                                color = GoldenAmber
+                            )
+                        }
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = if (isMacdGoldenCross) "تقاطع إيجابي صاعد 🟢" else "تقاطع سلبي هابط 🔴",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isMacdGoldenCross) BullishGreen else BearishRed
+                        )
+                        Text(
+                            text = "الهيستوجرام: ${String.format(Locale.US, "%+.2f", macdHist)} (${if (isMacdBullishHist) "عزم شراء" else "عزم بيع"})",
+                            fontSize = 9.sp,
+                            color = if (isMacdBullishHist) BullishGreen else BearishRed
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                val macdExplanation = if (isMacdGoldenCross && isMacdBullishHist) {
+                    "✅ مؤشر الماكد يؤكد تفوق قوى الشراء وتوسع الزخم الصاعد 🚀"
+                } else if (isMacdGoldenCross) {
+                    "⏳ تقاطع إيجابي جديد في طور تشكل الزخم الشرائي"
+                } else {
+                    "🔻 الماكد في المنطقة السلبية ويشير إلى ضغط بيعي مؤقت"
+                }
+                Text(
+                    text = macdExplanation,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isMacdGoldenCross) BullishGreen else TextMuted
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 4. Native Candlestick Canvas
         val candles = remember(stock.symbol, stock.price) { generateHistoricalCandles(stock) }
         val minPrice = candles.minOf { it.low }.coerceAtMost(stock.s2 * 0.99)
         val maxPrice = candles.maxOf { it.high }.coerceAtLeast(stock.r2 * 1.01)
@@ -340,17 +489,16 @@ private fun TechnicalIndicatorsAndNativeChart(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height((heightDp - 100).coerceAtLeast(160).dp)
+                .height(160.dp)
         ) {
             Canvas(modifier = Modifier.matchParentSize()) {
                 val canvasWidth = size.width
                 val canvasHeight = size.height
                 val chartHeight = canvasHeight * 0.78f
                 val volumeHeight = canvasHeight * 0.20f
-                val volumeTop = canvasHeight * 0.80f
 
-                fun priceToY(price: Double): Float {
-                    val normalized = (price - minPrice) / priceRange
+                fun priceToY(p: Double): Float {
+                    val normalized = (p - minPrice) / priceRange
                     return (chartHeight - (normalized * chartHeight)).toFloat()
                 }
 
@@ -424,6 +572,13 @@ private fun TechnicalIndicatorsAndNativeChart(
         }
     }
 }
+
+private data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
 
 private fun generateHistoricalCandles(stock: StockData): List<CandlePoint> {
     val list = mutableListOf<CandlePoint>()

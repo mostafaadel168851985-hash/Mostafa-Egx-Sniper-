@@ -41,6 +41,7 @@ object EgyptianStockDirectory {
         StockInfo("EGTS", "المصرية للمنتجعات السياحية", "🏗️ العقارات", listOf("منتجعات", "سهل حشيش", "سياحية", "egts")),
         StockInfo("RAYA", "راية القابضة للاستثمارات المالية", "📡 الاتصالات والتكنولوجيا", listOf("راية", "تكنولوجيا", "raya")),
         StockInfo("RMDA", "العاشر من رمضان للأدوية (راميدا)", "💊 الرعاية الصحية والأدوية", listOf("راميدا", "أدوية", "رمضان", "rmda", "rameda")),
+        StockInfo("NIPH", "شركة النيل للأدوية والصناعات الكيماوية", "💊 الرعاية الصحية والأدوية", listOf("النيل", "ادوية النيل", "أدوية النيل", "niph", "nile pharma")),
         StockInfo("SPMD", "سبيد ميديكال", "💊 الرعاية الصحية والأدوية", listOf("سبيد", "ميديكال", "تحاليل", "spmd")),
         StockInfo("EGCH", "الصناعات الكيماوية المصرية (كيما)", "🏭 البتروكيماويات والصناعات", listOf("كيما", "كيماويات", "egch", "kima")),
         StockInfo("CIRA", "القاهرة للخدمات التعليمية (سيرا)", "🛒 التجارة والخدمات", listOf("سيرا", "تعليم", "جامعة بدر", "cira")),
@@ -69,7 +70,7 @@ object EgyptianStockDirectory {
     val SHARIAH_STOCKS: Set<String> = setOf(
         "TMGH", "SWDY", "FWRY", "ABUK", "MFPC", "SKPC", "ESRS", "ETEL",
         "JUFO", "AMOC", "CCAP", "HELI", "PHDC", "ORWE", "EFID", "ISPH",
-        "DOMT", "CLHO", "MNHD", "ORAS", "EMFD", "RAYA", "SPMD", "RMDA",
+        "DOMT", "CLHO", "MNHD", "ORAS", "EMFD", "RAYA", "SPMD", "RMDA", "NIPH",
         "EGCH", "CIRA", "POUL", "ACAMD", "MCQE", "OCDI", "OBRI", "EGAL",
         "DSCW", "AIH", "ARAB", "ASCM"
     )

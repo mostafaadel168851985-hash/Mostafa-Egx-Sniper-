@@ -65,6 +65,36 @@ object FinancialAnalysisEngine {
             healthScore = 84
         ),
 
+        // الرعاية الصحية والأدوية (بما فيها سهم النيل للأدوية NIPH بدقة)
+        "NIPH" to AuditedStockDisclosure(
+            eps = 8.54, pe = 38.70, pb = 9.50, roe = 26.0, dividendYield = 3.0, fairValue = 105.0,
+            growthStage = "أرباح تشغيلية قوية في تصنيع الدواء ولكن السعر السوقي متضخم مضاربياً ⚠️",
+            verdict = "⚠️ سهم متضخم سعرياً ومضاربي بحت (مخاطرة عالية للاستثمار) 🔴",
+            advice = "حققت النيل للأدوية نمواً تشغيلياً قوياً بمضاعفة أرباحها الصافية لتسجل 256 مليون جنيه بربحية سهم 8.54 ج. ولكن السعر السوقي الحالي (يتجاوز 330 ج) متضخم جداً نتيجة مضاربات حادة تفوق القيمة العادلة المبررة مالياً (105 ج) بنسبة تفوق +200% ومكرر ربحية مرتفع. لا يصلح نهائياً للاستثمار المالي التراكمي، ويجب قصر التداول عليه كفرصة مضاربية فنية سريعة وسوينغ فقط وبوقف خسارة صارم جداً لحماية رأس المال.",
+            healthScore = 48
+        ),
+        "ISPH" to AuditedStockDisclosure(
+            eps = 0.72, pe = 8.20, pb = 1.40, roe = 21.0, dividendYield = 5.0, fairValue = 6.5,
+            growthStage = "توسع في شبكة التوزيع الدوائي والمستودعات الرقمية والخدمات اللوجستية 🚀",
+            verdict = "سهم رعاية صحية دفاعي ذو تدفقات نقدية متنامية 🟢",
+            advice = "ابن سينا فارما موزع الدواء الأسرع نمواً في مصر مع حصة سوقية تتجاوز 25%، ومكرر ربحية مغرٍ يجعله فرصة استثمارية دفاعية آمنة.",
+            healthScore = 84
+        ),
+        "RMDA" to AuditedStockDisclosure(
+            eps = 0.38, pe = 8.80, pb = 1.50, roe = 20.0, dividendYield = 4.5, fairValue = 3.6,
+            growthStage = "طرح مستحضرات دوائية متخصصة وتوسع في التصدير لأسواق الخليج 🚀",
+            verdict = "سهم دوائي متوازن ذو نمو مستقر في الأرباح التشغيلية 🟢",
+            advice = "تتميز راميدا بمحفظة أدوية متنوعة وهوامش أرباح تصنيعية جيدة، وتتداول بمضاعفات سعرية معتدلة تجعلها مناسبة للمستثمر المتوسط الأجل.",
+            healthScore = 81
+        ),
+        "CLHO" to AuditedStockDisclosure(
+            eps = 0.58, pe = 13.00, pb = 1.90, roe = 18.0, dividendYield = 3.0, fairValue = 8.2,
+            growthStage = "توسع في السعة السريرية للمستشفيات والمراكز التخصصية والعيادات 🚀",
+            verdict = "سهم رعاية صحية استراتيجي ذو طلب استهلاكي صلب 🟢",
+            advice = "كليوباترا أكبر شبكة مستشفيات خاصة في مصر، تقدم تدفقات نقدية مستقرة وأصولاً طبية لا تقدر بثمن تحمي المستثمر من أي تقلبات اقتصادية.",
+            healthScore = 82
+        ),
+
         // البنوك
         "COMI" to AuditedStockDisclosure(
             eps = 21.15, pe = 6.14, pb = 1.82, roe = 34.3, dividendYield = 4.5, fairValue = 148.0,
@@ -255,29 +285,6 @@ object FinancialAnalysisEngine {
             verdict = "سهم نمو استهلاكي ممتاز ذو هوامش ربحية صحية 🟢",
             advice = "إيديتا تتربع على عرش صناعة الكرواسون والكيك الجاف بعلامات تجارية محبوبة ونمو تصديري إقليمي، مما يجعلها سهماً مناسباً للاستثمار طويل الأجل.",
             healthScore = 86
-        ),
-
-        // الرعاية الصحية والأدوية
-        "ISPH" to AuditedStockDisclosure(
-            eps = 0.72, pe = 8.20, pb = 1.40, roe = 21.0, dividendYield = 5.0, fairValue = 6.5,
-            growthStage = "توسع في شبكة التوزيع الدوائي والمستودعات الرقمية والخدمات اللوجستية 🚀",
-            verdict = "سهم رعاية صحية دفاعي ذو تدفقات نقدية متنامية 🟢",
-            advice = "ابن سينا فارما موزع الدواء الأسرع نمواً في مصر مع حصة سوقية تتجاوز 25%، ومكرر ربحية مغرٍ يجعله فرصة استثمارية دفاعية آمنة.",
-            healthScore = 84
-        ),
-        "RMDA" to AuditedStockDisclosure(
-            eps = 0.38, pe = 8.80, pb = 1.50, roe = 20.0, dividendYield = 4.5, fairValue = 3.6,
-            growthStage = "طرح مستحضرات دوائية متخصصة وتوسع في التصدير لأسواق الخليج 🚀",
-            verdict = "سهم دوائي متوازن ذو نمو مستقر في الأرباح التشغيلية 🟢",
-            advice = "تتميز راميدا بمحفظة أدوية متنوعة وهوامش أرباح تصنيعية جيدة، وتتداول بمضاعفات سعرية معتدلة تجعلها مناسبة للمستثمر المتوسط الأجل.",
-            healthScore = 81
-        ),
-        "CLHO" to AuditedStockDisclosure(
-            eps = 0.58, pe = 13.00, pb = 1.90, roe = 18.0, dividendYield = 3.0, fairValue = 8.2,
-            growthStage = "توسع في السعة السريرية للمستشفيات والمراكز التخصصية والعيادات 🚀",
-            verdict = "سهم رعاية صحية استراتيجي ذو طلب استهلاكي صلب 🟢",
-            advice = "كليوباترا أكبر شبكة مستشفيات خاصة في مصر، تقدم تدفقات نقدية مستقرة وأصولاً طبية لا تقدر بثمن تحمي المستثمر من أي تقلبات اقتصادية.",
-            healthScore = 82
         )
     )
 
@@ -308,7 +315,7 @@ object FinancialAnalysisEngine {
         val safePrice = if (price > 0) price else 1.0
         val cleanSym = symbol.trim().uppercase()
 
-        // Tier 1: Check if audited 2025/2026 disclosure exists for this symbol (e.g. GBCO, COMI, TMGH, etc.)
+        // Tier 1: Check if audited 2025/2026 disclosure exists for this symbol (e.g. GBCO, NIPH, COMI, TMGH, etc.)
         val audited = AUDITED_DISCLOSURES[cleanSym]
         if (audited != null) {
             val resolvedPe = pe?.takeIf { it in 1.0..100.0 } ?: audited.pe
@@ -324,6 +331,9 @@ object FinancialAnalysisEngine {
                 -(((safePrice - fairValue) / safePrice) * 100.0)
             }
 
+            val isOvervalued = marginOfSafetyPct < -20.0 || resolvedPe > 25.0 || resolvedPb > 6.0
+            val isWorth = audited.healthScore >= 65 && !isOvervalued && marginOfSafetyPct >= -10.0
+
             return FinancialMetrics(
                 peRatio = (resolvedPe * 100).roundToInt() / 100.0,
                 pbRatio = (resolvedPb * 100).roundToInt() / 100.0,
@@ -333,10 +343,10 @@ object FinancialAnalysisEngine {
                 estimatedFairValue = (fairValue * 100).roundToInt() / 100.0,
                 marginOfSafetyPct = (marginOfSafetyPct * 10).roundToInt() / 10.0,
                 growthStageArabic = audited.growthStage,
-                investmentVerdict = audited.verdict,
+                investmentVerdict = if (isOvervalued) "⚠️ سهم متضخم سعرياً ومضاربي (لا يصلح للاستثمار طويل الأجل) 🔴" else audited.verdict,
                 investmentAdviceArabic = audited.advice,
-                isWorthInvesting = true,
-                financialHealthScore = audited.healthScore,
+                isWorthInvesting = isWorth,
+                financialHealthScore = if (isOvervalued) min(50, audited.healthScore) else audited.healthScore,
                 dataSourceBadge = "بيانات معتمدة من أحدث إفصاحات البورصة المصرية والقوائم المالية الرسمية 🏛️"
             )
         }
@@ -356,8 +366,10 @@ object FinancialAnalysisEngine {
         val bookValue = (safePrice / resolvedPb).coerceAtLeast(0.1)
         val grahamMultiplier = 22.5
         val calculatedGraham = sqrt(max(0.1, grahamMultiplier * resolvedEps * bookValue))
-        val estimatedFairValue = if (calculatedGraham in (safePrice * 0.5)..(safePrice * 2.5)) {
-            calculatedGraham
+        val normalizedPeValue = resolvedEps * benchmark.medianPe
+        val estimatedFairValue = if (calculatedGraham > 0 && normalizedPeValue > 0) {
+            // Weighted average of Graham and Sector Normalized PE
+            (calculatedGraham * 0.4) + (normalizedPeValue * 0.6)
         } else {
             resolvedEps * benchmark.medianPe
         }
@@ -368,17 +380,21 @@ object FinancialAnalysisEngine {
             -(((safePrice - estimatedFairValue) / safePrice) * 100.0)
         }
 
-        // Financial Health Score (0 - 100)
+        // Financial Health Score with heavy penalty for severe overvaluation
         var score = 50
-        if (resolvedPe in 4.0..12.0) score += 18 else if (resolvedPe in 12.0..18.0) score += 10
-        if (resolvedPb in 0.7..2.5) score += 14 else if (resolvedPb < 0.7) score += 8
+        if (resolvedPe in 4.0..12.0) score += 18 else if (resolvedPe in 12.0..18.0) score += 10 else if (resolvedPe > 30.0) score -= 25 else if (resolvedPe > 20.0) score -= 15
+        if (resolvedPb in 0.7..2.5) score += 14 else if (resolvedPb < 0.7) score += 8 else if (resolvedPb > 5.0) score -= 20
         if (resolvedRoe >= 25.0) score += 20 else if (resolvedRoe >= 15.0) score += 14 else if (resolvedRoe > 8.0) score += 8
         if (resolvedDivYield >= 6.0) score += 15 else if (resolvedDivYield >= 3.0) score += 10
-        if (safePrice > sma200 && sma200 > 0) score += 10
-        if (marginOfSafetyPct > 15.0) score += 10
-        val healthScore = min(100, max(20, score))
+        if (safePrice > sma200 && sma200 > 0) score += 8
+        if (marginOfSafetyPct > 15.0) score += 12 else if (marginOfSafetyPct < -30.0) score -= 25 else if (marginOfSafetyPct < -15.0) score -= 12
+        val healthScore = min(100, max(15, score))
+
+        val isOvervalued = marginOfSafetyPct < -20.0 || resolvedPe > 25.0 || resolvedPb > 5.0
+        val isWorthInvesting = healthScore >= 65 && !isOvervalued && marginOfSafetyPct >= -10.0 && resolvedRoe >= 14.0 && resolvedPe <= 18.0
 
         val growthStage = when {
+            isOvervalued -> "مرحلة فقاعة مضاربية وسعر سوقي يتجاوز القيمة العادلة بكثير ⚠️"
             resolvedRoe >= 25.0 && resolvedPe <= 12.0 -> "نمو تشغيلي قوي وأرباح قياسية في ${detectedSector} 🚀"
             resolvedRoe >= 15.0 && resolvedDivYield >= 5.0 -> "نمو مستقر وتوزيعات نقدية سخية في ${detectedSector} 💎"
             resolvedPe <= 7.0 && marginOfSafetyPct > 20.0 -> "سهم قيمة مقيّم بأقل من قيمته العادلة مقارنة بقطاعه 🛡️"
@@ -386,10 +402,10 @@ object FinancialAnalysisEngine {
             else -> "مرحلة استقرار وإعادة هيكلة ⚖️"
         }
 
-        val isWorthInvesting = healthScore >= 65 && resolvedRoe >= 14.0 && resolvedPe <= 16.0
         val verdict = when {
+            isOvervalued -> "⚠️ سهم متضخم سعرياً ومضاربي (لا يصلح للاستثمار طويل الأجل) 🔴"
             healthScore >= 75 && isWorthInvesting -> "سهم استثماري واعد ذو جودة نمو ممتازة في ${detectedSector} 🟢"
-            healthScore >= 60 -> "استثمار متوسط الأجل مع مراقبة النتائج الفصلية 🟡"
+            healthScore >= 60 && !isOvervalued -> "استثمار متوسط الأجل مع مراقبة النتائج الفصلية 🟡"
             else -> "سهم للمضاربة السريعة والتداول الفني فقط 🔴"
         }
 
@@ -401,7 +417,9 @@ object FinancialAnalysisEngine {
             divYield = resolvedDivYield,
             marginOfSafety = marginOfSafetyPct,
             fairValue = estimatedFairValue,
-            isWorth = isWorthInvesting
+            safePrice = safePrice,
+            isWorth = isWorthInvesting,
+            isOvervalued = isOvervalued
         )
 
         val sourceBadge = if (pe != null && pb != null) {
@@ -435,7 +453,9 @@ object FinancialAnalysisEngine {
         divYield: Double,
         marginOfSafety: Double,
         fairValue: Double,
-        isWorth: Boolean
+        safePrice: Double,
+        isWorth: Boolean,
+        isOvervalued: Boolean
     ): String {
         val growthAssessment = if (roe >= 20.0) {
             "تحقق الشركة أداءً قوياً في $sector مع عائد ممتاز على حقوق المساهمين (${String.format(Locale.US, "%.1f", roe)}%) يؤكد كفاءة إدارة رأس المال."
@@ -445,7 +465,9 @@ object FinancialAnalysisEngine {
             "تواجه الشركة ضغطاً في نمو الربحية مقارنة بمتوسط قطاعها."
         }
 
-        val valuationAssessment = if (marginOfSafety > 10.0) {
+        val valuationAssessment = if (isOvervalued) {
+            "تنبيه مخاطرة: السعر السوقي الحالي (${String.format(Locale.US, "%.2f", safePrice)} ج) متضخم جداً بنسبة تفوق قيمته العادلة المقدرة (${String.format(Locale.US, "%.2f", fairValue)} ج) بفارق سلبي (${String.format(Locale.US, "%.1f", marginOfSafety)}%) ومكرر ربحية مرتفع (${String.format(Locale.US, "%.1f", pe)}x)."
+        } else if (marginOfSafety > 10.0) {
             "السعر السوقي الحالي يوفر هامش أمان جذاباً بنسبة (+${String.format(Locale.US, "%.1f", marginOfSafety)}%) مقارنة بالقيمة العادلة المقدرة (${String.format(Locale.US, "%.2f", fairValue)} ج)."
         } else if (marginOfSafety in -10.0..10.0) {
             "السعر يتداول في نطاق قريب جداً من قيمته العادلة المقدرة (${String.format(Locale.US, "%.2f", fairValue)} ج)."
@@ -453,7 +475,9 @@ object FinancialAnalysisEngine {
             "السعر السوقي يعكس تفاؤلاً كبيراً ويتداول بأعلى من قيمته العادلة المقدرة."
         }
 
-        val actionRecommendation = if (isWorth) {
+        val actionRecommendation = if (isOvervalued) {
+            "لا يصلح السهم نهائياً للاستثمار المالي التراكمي نظراً لارتفاع مخاطر الهبوط المالي؛ ويجب أن يقتصر التداول عليه كفرصة مضاربية فنية سريعة أو سوينغ قصير الأجل مع وقف خسارة حديدي."
+        } else if (isWorth) {
             "نعم، السهم مؤهل للاستثمار التراكمي في $sector وتكوين مراكز تدريجية عند أي تصحيح سعري."
         } else {
             "يُفضل التعامل مع السهم كفرصة مضاربية فنية سريعة وسوينغ مع الالتزام بوقف الخسارة دون التورط في الاستثمار طويل الأجل."

@@ -15,7 +15,7 @@ object TechnicalAnalysisEngine {
         "🍔 الأغذية والمشروبات" to listOf("BFR", "EFID", "JUFO", "ORWE", "EDFO", "BIF", "OLFI", "DOMT", "ISMA", "AJWA"),
         "📡 الاتصالات والتكنولوجيا" to listOf("ETEL", "OTMT", "TE", "EMOB", "EGS", "FWRY", "RAYA", "BTFH", "MTIE"),
         "🏭 البتروكيماويات والصناعات" to listOf("ESRS", "MFPC", "SKPC", "ABUK", "EFIC", "EGCH", "MICH", "AMOC", "EKHO", "SWDY", "SIDPEC"),
-        "💊 الرعاية الصحية والأدوية" to listOf("PHAR", "ISPH", "RMDA", "MCRO", "SPMD", "AXPH"),
+        "💊 الرعاية الصحية والأدوية" to listOf("PHAR", "ISPH", "RMDA", "MCRO", "SPMD", "AXPH", "NIPH"),
         "🛒 التجارة والخدمات" to listOf("AUTO", "GBCO", "ELSE", "MENA", "CAPI", "PRDC", "MOIL")
     )
 
