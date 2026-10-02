@@ -55,8 +55,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.CorporateNews
 import com.example.data.model.StockData
 import com.example.ui.components.CandlestickChart
+import com.example.ui.components.StockFinancialAnalysisCard
+import com.example.ui.components.StockRelatedNewsCard
+import com.example.ui.components.TraderProfileStrategyView
 import com.example.ui.theme.AccentCyan
 import com.example.ui.theme.AccentPurple
 import com.example.ui.theme.BackgroundDark
@@ -83,6 +87,7 @@ fun StockDetailScreen(
     onRecordTrade: (StockData) -> Unit,
     modifier: Modifier = Modifier,
     portfolioCapital: Double = 50000.0,
+    allNews: List<CorporateNews> = emptyList(),
     onNavigateToPortfolio: () -> Unit = {}
 ) {
     BackHandler { onBack() }
@@ -325,6 +330,23 @@ fun StockDetailScreen(
                 }
             }
 
+            // 3-Profile Trader Strategy Matrix (Scalper, Swing, Investor)
+            item {
+                Spacer(modifier = Modifier.height(14.dp))
+                TraderProfileStrategyView(stock = stock)
+            }
+
+            // Comprehensive Fundamental & Financial Analysis (P/E, ROE, Fair Value, Growth Advice)
+            stock.financialMetrics?.let { financial ->
+                item {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    StockFinancialAnalysisCard(
+                        financial = financial,
+                        currentPrice = stock.price
+                    )
+                }
+            }
+
             // Pivot Support & Resistance Table
             item {
                 Spacer(modifier = Modifier.height(14.dp))
@@ -397,6 +419,12 @@ fun StockDetailScreen(
                         }
                     }
                 }
+            }
+
+            // Real-time Stock Related Disclosures & News
+            item {
+                Spacer(modifier = Modifier.height(14.dp))
+                StockRelatedNewsCard(stock = stock, allNews = allNews)
             }
 
             // 3-Level Position Sizing Entry Plan

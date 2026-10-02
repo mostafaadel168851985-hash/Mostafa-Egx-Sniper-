@@ -114,8 +114,17 @@ data class StockUiState(
 
             // Filter by screener strategy
             return when (activeScreenerFilter) {
-                ScreenerFilter.TOMORROW_PICKS -> list.filter { it.isTomorrowPick }
-                    .sortedByDescending { it.smartScore }
+                ScreenerFilter.TOMORROW_PICKS -> {
+                    val picks = list.filter { it.isTomorrowPick }
+                    if (picks.isNotEmpty()) {
+                        picks.sortedWith(compareByDescending<StockData> { it.smartScore }.thenByDescending { it.riskRewardRatio })
+                    } else {
+                        // High-conviction fallback: Top picks sorted by Smart Score and Confidence so user always gets actionable recommendations
+                        list.filter { it.price > 0.0 }
+                            .sortedWith(compareByDescending<StockData> { it.smartScore }.thenByDescending { it.riskRewardRatio })
+                            .take(12)
+                    }
+                }
                 ScreenerFilter.SHARIAH -> list.filter { it.isShariahCompliant }
                     .sortedByDescending { it.smartScore }
                 ScreenerFilter.CORRECTIONS -> list.filter { it.isCorrectionHunter }

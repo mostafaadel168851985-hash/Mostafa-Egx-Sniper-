@@ -76,7 +76,19 @@ data class StockData(
     val isShariahCompliant: Boolean = false,
     val indexBelonging: String = "EGX30",
     val screenerReasons: List<String>,
-    val sector: String
+    val sector: String,
+
+    // Advanced Technical Indicators (EMA 20/50/200, MACD, OBV)
+    val ema20: Double = 0.0,
+    val ema50: Double = 0.0,
+    val ema200: Double = 0.0,
+    val macdLine: Double = 0.0,
+    val macdSignal: Double = 0.0,
+    val macdHist: Double = 0.0,
+    val obvTrend: String = "تجميع هادئ 🌊",
+
+    // Comprehensive Fundamental & Financial Analysis
+    val financialMetrics: FinancialMetrics? = null
 ) {
     val formattedPrice: String
         get() = String.format(Locale.US, "%.3f", price)

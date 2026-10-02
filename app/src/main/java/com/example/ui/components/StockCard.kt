@@ -47,7 +47,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.CorporateNews
 import com.example.data.model.StockData
+import com.example.ui.components.StockFinancialAnalysisCard
 import com.example.ui.theme.AccentCyan
 import com.example.ui.theme.AccentPurple
 import com.example.ui.theme.BearishRed
@@ -73,7 +75,8 @@ fun StockCard(
     onCalculateAverage: (StockData) -> Unit,
     onToggleAlert: (StockData) -> Unit,
     modifier: Modifier = Modifier,
-    portfolioCapital: Double = 50000.0
+    portfolioCapital: Double = 50000.0,
+    allNews: List<CorporateNews> = emptyList()
 ) {
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
@@ -412,6 +415,22 @@ fun StockCard(
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                     }
+
+                    // 3-Profile Trader Strategy Matrix (Scalper, Swing, Investor)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    TraderProfileStrategyView(stock = stock)
+
+                    // Stock Related News & Announcements
+                    Spacer(modifier = Modifier.height(8.dp))
+                    StockRelatedNewsCard(stock = stock, allNews = allNews)
+
+                    // Financial Analysis & Investment Verdict
+                    stock.financialMetrics?.let { fin ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        StockFinancialAnalysisCard(financial = fin, currentPrice = stock.price)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Action buttons
                     Row(

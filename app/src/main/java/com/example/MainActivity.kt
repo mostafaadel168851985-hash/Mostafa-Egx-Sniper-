@@ -11,24 +11,35 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -41,10 +52,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,8 +80,11 @@ import com.example.ui.screens.StockDetailScreen
 import com.example.ui.theme.AccentCyan
 import com.example.ui.theme.BackgroundDark
 import com.example.ui.theme.BullishGreen
+import com.example.ui.theme.GoldenAmber
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.SurfaceDark
+import com.example.ui.theme.SurfaceVariantDark
+import com.example.ui.theme.TerminalTheme
 import com.example.ui.theme.TextMuted
 import com.example.viewmodel.NavScreen
 import com.example.viewmodel.StockViewModel
@@ -151,6 +167,77 @@ fun EgxSniperApp(
             .windowInsetsPadding(WindowInsets.safeDrawing),
         containerColor = BackgroundDark,
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            if (uiState.currentScreen != NavScreen.STOCK_DETAIL && uiState.currentScreen != NavScreen.PORTFOLIO_ALLOCATION) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceDark)
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "EGX Sniper 🎯",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = AccentCyan
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(BullishGreen.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "مباشر ⚡",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BullishGreen
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Quick Portfolio Shortcut
+                        IconButton(
+                            onClick = { viewModel.navigateTo(NavScreen.PORTFOLIO_ALLOCATION) },
+                            modifier = Modifier
+                                .background(SurfaceVariantDark, RoundedCornerShape(10.dp))
+                                .size(36.dp)
+                                .testTag("btn_top_portfolio")
+                        ) {
+                            Icon(
+                                Icons.Default.AccountBalanceWallet,
+                                contentDescription = "المحفظة",
+                                tint = GoldenAmber,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // Dark / Light Theme Toggle Button
+                        IconButton(
+                            onClick = { TerminalTheme.isDark = !TerminalTheme.isDark },
+                            modifier = Modifier
+                                .background(SurfaceVariantDark, RoundedCornerShape(10.dp))
+                                .size(36.dp)
+                                .testTag("btn_toggle_theme")
+                        ) {
+                            Icon(
+                                if (TerminalTheme.isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription = if (TerminalTheme.isDark) "تفعيل الوضع النهاري" else "تفعيل الوضع الليلي",
+                                tint = if (TerminalTheme.isDark) GoldenAmber else AccentCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        },
         bottomBar = {
             if (uiState.currentScreen != NavScreen.STOCK_DETAIL) {
                 NavigationBar(
@@ -359,6 +446,7 @@ fun EgxSniperApp(
                             onCalculateAverage = { viewModel.navigateTo(NavScreen.AVERAGE_CALCULATOR, stock) },
                             onRecordTrade = { viewModel.recordTrade(stock, "تحليل مفصل") },
                             portfolioCapital = uiState.portfolioCapital,
+                            allNews = uiState.corporateNews,
                             onNavigateToPortfolio = { viewModel.navigateTo(NavScreen.PORTFOLIO_ALLOCATION) }
                         )
                     } ?: run {

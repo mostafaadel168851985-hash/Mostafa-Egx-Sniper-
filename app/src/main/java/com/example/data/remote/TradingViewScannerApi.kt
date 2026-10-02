@@ -1,5 +1,6 @@
 package com.example.data.remote
 
+import com.example.data.model.FinancialAnalysisEngine
 import com.example.data.model.MarketIndexStatus
 import com.example.data.model.StockData
 import com.example.data.model.TrendDirection
@@ -371,7 +372,11 @@ class TradingViewScannerApi {
             "name", "close", "RSI", "volume", "average_volume_10d_calc",
             "high", "low", "change", "description",
             "SMA20", "SMA50", "SMA200", "open",
-            "price_52_week_high", "price_52_week_low", "Perf.1M", "Perf.W", "Perf.3M", "Volatility.D"
+            "price_52_week_high", "price_52_week_low", "Perf.1M", "Perf.W", "Perf.3M", "Volatility.D",
+            "EMA20", "EMA50", "EMA200",
+            "MACD.macd", "MACD.signal", "MACD.hist",
+            "price_earnings_ttm", "price_book_fq", "earnings_per_share_basic_ttm",
+            "return_on_equity", "dividend_yield_recent"
         )
 
         val payload = JSONObject().apply {
@@ -438,7 +443,11 @@ class TradingViewScannerApi {
             "name", "close", "RSI", "volume", "average_volume_10d_calc",
             "high", "low", "change", "description",
             "SMA20", "SMA50", "SMA200", "open",
-            "price_52_week_high", "price_52_week_low", "Perf.1M", "Perf.W", "Perf.3M", "Volatility.D"
+            "price_52_week_high", "price_52_week_low", "Perf.1M", "Perf.W", "Perf.3M", "Volatility.D",
+            "EMA20", "EMA50", "EMA200",
+            "MACD.macd", "MACD.signal", "MACD.hist",
+            "price_earnings_ttm", "price_book_fq", "earnings_per_share_basic_ttm",
+            "return_on_equity", "dividend_yield_recent"
         )
 
         // Attempt 1: Direct ticker match (EGX:SYMBOL)
@@ -659,11 +668,43 @@ class TradingViewScannerApi {
             val isEarlyUptrend = (upsideTo52wHigh >= 20.0) && (trendShort == "صاعد" || p >= sma20) &&
                     (rsi in 44.0..65.0) && (chg > -0.5) && (perf1m > -10.0) && (dailyTurnover >= 2_500_000)
 
-            // 5. Tomorrow Pick (مرشح الغد الناري - صفوة الأسهم ذات الاحتمالية الأعلى):
-            val isTomorrowPick = smartScore >= 68 && rr >= 1.8 && dailyTurnover >= 4_000_000 &&
-                    (confGrade == "A+" || confGrade == "A") &&
-                    (rsi in 42.0..68.0) && (trendShort == "صاعد" || p >= sma20) &&
-                    (chg > -1.0) && (breakoutQuality.score >= 45)
+            // 5. Tomorrow Pick (مرشح الغد الناري - صفوة الأسهم ذات الاحتمالية الأعلى مرونة ودقة):
+            val isTomorrowPick = (smartScore >= 55 && (confGrade in listOf("A+", "A", "B")) && rsi in 38.0..74.0 && chg > -2.0 && rr >= 1.3) ||
+                    (isRapidBreakout || isEarlyUptrend || (isGoldenCross && chg > 0.0) || (isSupportBounce && chg > 0.3))
+
+            // Advanced Technical Indicators (EMA 20/50/200, MACD, OBV)
+            val ema20 = round3(if (d.length() > 19 && !d.isNull(19)) d.optDouble(19, sma20) else sma20)
+            val ema50 = round3(if (d.length() > 20 && !d.isNull(20)) d.optDouble(20, sma50) else sma50)
+            val ema200 = round3(if (d.length() > 21 && !d.isNull(21)) d.optDouble(21, sma200) else sma200)
+
+            val macdLine = round3(if (d.length() > 22 && !d.isNull(22)) d.optDouble(22, 0.0) else 0.0)
+            val macdSignal = round3(if (d.length() > 23 && !d.isNull(23)) d.optDouble(23, 0.0) else 0.0)
+            val macdHist = round3(if (d.length() > 24 && !d.isNull(24)) d.optDouble(24, 0.0) else (macdLine - macdSignal))
+
+            val pe = if (d.length() > 25 && !d.isNull(25)) d.optDouble(25, 0.0).takeIf { it > 0 } else null
+            val pb = if (d.length() > 26 && !d.isNull(26)) d.optDouble(26, 0.0).takeIf { it > 0 } else null
+            val eps = if (d.length() > 27 && !d.isNull(27)) d.optDouble(27, 0.0).takeIf { it > 0 } else null
+            val roe = if (d.length() > 28 && !d.isNull(28)) d.optDouble(28, 0.0) else null
+            val divYield = if (d.length() > 29 && !d.isNull(29)) d.optDouble(29, 0.0).takeIf { it >= 0 } else null
+
+            val obvTrend = when {
+                volumeRatio >= 1.5 && chg > 0 -> "تجميع مؤسسي قوي وتدفق سيولة 🔥"
+                volumeRatio >= 1.0 && chg >= 0 -> "تدفق سيولة إيجابي مستقر 🌊"
+                chg < -1.0 && volumeRatio >= 1.3 -> "ضغط بيعي وتصريف مؤقت ⚠️"
+                else -> "تداول متوازن ⚖️"
+            }
+
+            val financialMetrics = FinancialAnalysisEngine.analyze(
+                symbol = name,
+                price = p,
+                pe = pe,
+                pb = pb,
+                eps = eps,
+                roe = roe,
+                divYield = divYield,
+                sma200 = sma200,
+                upsideTo52w = upsideTo52wHigh
+            )
 
             val screenerReasons = mutableListOf<String>()
             if (isGoldenCross) screenerReasons.add("🌟 تقاطع ذهبي 50/200 يوم (إيجابي جداً)")
@@ -735,7 +776,15 @@ class TradingViewScannerApi {
                 isShariahCompliant = EgyptianStockDirectory.isShariahCompliant(name),
                 indexBelonging = EgyptianStockDirectory.getIndexBelonging(name),
                 screenerReasons = screenerReasons,
-                sector = sector
+                sector = sector,
+                ema20 = ema20,
+                ema50 = ema50,
+                ema200 = ema200,
+                macdLine = macdLine,
+                macdSignal = macdSignal,
+                macdHist = macdHist,
+                obvTrend = obvTrend,
+                financialMetrics = financialMetrics
             )
         } catch (_: Exception) {
             return null
