@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -94,7 +95,7 @@ fun StockCard(
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .border(1.dp, borderAccent, RoundedCornerShape(16.dp))
-            .clickable { expanded = !expanded }
+            .clickable { onSelectStock(stock) }
             .testTag("stock_card_${stock.symbol}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceDark)
@@ -437,112 +438,69 @@ fun StockCard(
                 }
             }
 
-            // Expandable details with chart and action buttons
-            AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(top = 10.dp)) {
-                    HorizontalDivider(color = OutlineDark, modifier = Modifier.padding(vertical = 8.dp))
+            // Always Visible Action Buttons Row (Direct Full Analysis & Direct WhatsApp Share)
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = { onSelectStock(stock) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("btn_detail_${stock.symbol}"),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentCyan),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.ShowChart, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("التحليل الكامل والشارت 🔍", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                }
 
-                    Text(
-                        text = "📊 رسم بياني للشموع والمتوسطات المتحركة 20 و 50 و 200 يوم",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
+                // Direct WhatsApp Share Button
+                IconButton(
+                    onClick = { com.example.util.ShareHelper.shareStockAnalysisToWhatsApp(context, stock) },
+                    modifier = Modifier
+                        .background(Color(0xFF25D366).copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                        .size(38.dp)
+                        .testTag("btn_share_wa_${stock.symbol}")
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = "مشاركة على واتساب", tint = Color(0xFF25D366), modifier = Modifier.size(18.dp))
+                }
 
-                    Spacer(modifier = Modifier.height(6.dp))
-                    CandlestickChart(stock = stock, heightDp = 180)
+                // Average Price Calculator
+                IconButton(
+                    onClick = { onCalculateAverage(stock) },
+                    modifier = Modifier
+                        .background(GoldenAmberBg, RoundedCornerShape(8.dp))
+                        .size(38.dp)
+                        .testTag("btn_avg_${stock.symbol}")
+                ) {
+                    Icon(Icons.Default.Calculate, contentDescription = "متوسط السعر", tint = GoldenAmber, modifier = Modifier.size(18.dp))
+                }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                // Toggle Alert
+                IconButton(
+                    onClick = { onToggleAlert(stock) },
+                    modifier = Modifier
+                        .background(AccentPurple.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                        .size(38.dp)
+                        .testTag("btn_alert_${stock.symbol}")
+                ) {
+                    Icon(Icons.Default.NotificationsActive, contentDescription = "تنبيه", tint = AccentPurple, modifier = Modifier.size(18.dp))
+                }
 
-                    // Candlestick & Breakout Advice
-                    if (stock.candlePatterns.isNotEmpty()) {
-                        Text(
-                            text = "🕯️ نماذج الشموع اليابانية المكتشفة:",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentCyan
-                        )
-                        stock.candlePatterns.forEach { p ->
-                            Text(text = "• $p", fontSize = 11.sp, color = TextSecondary)
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                    }
-
-                    // 3-Profile Trader Strategy Matrix (Scalper, Swing, Investor)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    TraderProfileStrategyView(stock = stock)
-
-                    // Stock Related News & Announcements
-                    Spacer(modifier = Modifier.height(8.dp))
-                    StockRelatedNewsCard(stock = stock, allNews = allNews)
-
-                    // Financial Analysis & Investment Verdict
-                    stock.financialMetrics?.let { fin ->
-                        Spacer(modifier = Modifier.height(8.dp))
-                        StockFinancialAnalysisCard(financial = fin, currentPrice = stock.price)
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Action buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { onSelectStock(stock) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("btn_detail_${stock.symbol}"),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentCyan)
-                        ) {
-                            Icon(Icons.Default.ShowChart, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("التحليل الكامل", fontSize = 12.sp, color = Color.Black)
-                        }
-
-                        OutlinedButton(
-                            onClick = { onCalculateAverage(stock) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("btn_avg_${stock.symbol}"),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldenAmber)
-                        ) {
-                            Icon(Icons.Default.Calculate, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("متوسط السعر", fontSize = 12.sp)
-                        }
-
-                        IconButton(
-                            onClick = { onRecordTrade(stock) },
-                            modifier = Modifier
-                                .background(BullishGreenBg, RoundedCornerShape(8.dp))
-                                .size(40.dp)
-                                .testTag("btn_record_${stock.symbol}")
-                        ) {
-                            Icon(Icons.Default.BookmarkAdd, contentDescription = "تسجيل صفقة", tint = BullishGreen)
-                        }
-
-                        IconButton(
-                            onClick = { onToggleAlert(stock) },
-                            modifier = Modifier
-                                .background(GoldenAmberBg, RoundedCornerShape(8.dp))
-                                .size(40.dp)
-                                .testTag("btn_alert_${stock.symbol}")
-                        ) {
-                            Icon(Icons.Default.NotificationsActive, contentDescription = "تنبيه", tint = GoldenAmber)
-                        }
-
-                        IconButton(
-                            onClick = { com.example.util.ShareHelper.shareStockAnalysisToWhatsApp(context, stock) },
-                            modifier = Modifier
-                                .background(Color(0xFF25D366).copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                                .size(40.dp)
-                                .testTag("btn_share_wa_${stock.symbol}")
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = "مشاركة على واتساب", tint = Color(0xFF25D366))
-                        }
-                    }
+                // Record Trade
+                IconButton(
+                    onClick = { onRecordTrade(stock) },
+                    modifier = Modifier
+                        .background(BullishGreenBg, RoundedCornerShape(8.dp))
+                        .size(38.dp)
+                        .testTag("btn_record_${stock.symbol}")
+                ) {
+                    Icon(Icons.Default.BookmarkAdd, contentDescription = "تسجيل صفقة", tint = BullishGreen, modifier = Modifier.size(18.dp))
                 }
             }
         }

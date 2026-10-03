@@ -148,6 +148,59 @@ fun StockDetailScreen(
                 .testTag("stock_detail_column"),
             contentPadding = PaddingValues(bottom = 90.dp)
         ) {
+            // Quick Action Bar: WhatsApp Share, Average Calculator, Trade Recording
+            item {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            com.example.util.ShareHelper.shareStockAnalysisToWhatsApp(context, stock)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_detail_share_whatsapp"),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(vertical = 10.dp, horizontal = 12.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "مشاركة التحليل عبر واتساب",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = { onCalculateAverage(stock) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldenAmber),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldenAmber),
+                        contentPadding = PaddingValues(vertical = 10.dp, horizontal = 10.dp)
+                    ) {
+                        Icon(Icons.Default.Calculate, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("متوسط التكلفة", fontSize = 11.sp)
+                    }
+
+                    IconButton(
+                        onClick = { onRecordTrade(stock) },
+                        modifier = Modifier
+                            .background(BullishGreenBg, RoundedCornerShape(10.dp))
+                            .border(1.dp, BullishGreen.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                            .size(42.dp)
+                    ) {
+                        Icon(Icons.Default.BookmarkAdd, contentDescription = "تسجيل صفقة", tint = BullishGreen)
+                    }
+                }
+            }
+
             // Hero Candlestick Chart
             item {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -162,7 +215,7 @@ fun StockDetailScreen(
                         .fillMaxWidth()
                         .border(1.dp, BullishGreen, RoundedCornerShape(14.dp)),
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0C1929))
+                    colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
