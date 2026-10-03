@@ -653,6 +653,12 @@ class TradingViewScannerApi {
                 sma200 = sma200, r1 = r1, dailyTurnover = dailyTurnover, candleStrength = candleStrength
             )
 
+            // Weekly Multi-Timeframe Confirmation (RSI 1W & MACD 1W from TradingView)
+            val weeklyRsi = if (d.length() > 30 && !d.isNull(30)) d.optDouble(30, 50.0) else 50.0
+            val weeklyMacdLine = if (d.length() > 31 && !d.isNull(31)) d.optDouble(31, 0.0) else 0.0
+            val weeklyMacdSignal = if (d.length() > 32 && !d.isNull(32)) d.optDouble(32, 0.0) else 0.0
+            val isWeeklyConfirmedBullish = (weeklyRsi > 50.0) && (weeklyMacdLine >= weeklyMacdSignal)
+
             // Screener logic (Upgraded for high accuracy & reduced false signals):
             // 1. Correction Hunter (اقتناص التصحيح في الاتجاه الصاعد):
             val distToS1 = if (s1 > 0) (p - s1) / s1 * 100.0 else 99.0
@@ -709,13 +715,6 @@ class TradingViewScannerApi {
             val eps = if (d.length() > 27 && !d.isNull(27)) d.optDouble(27, 0.0).takeIf { it > 0 } else null
             val roe = if (d.length() > 28 && !d.isNull(28)) d.optDouble(28, 0.0) else null
             val divYield = if (d.length() > 29 && !d.isNull(29)) d.optDouble(29, 0.0).takeIf { it >= 0 } else null
-
-            // تأكيد إطار زمني أسبوعي حقيقي (مباشر من TradingView على الشارت الأسبوعي الفعلي،
-            // بدل محاكاته بمتوسط SMA50 اليومي كما كان سابقاً):
-            val weeklyRsi = if (d.length() > 30 && !d.isNull(30)) d.optDouble(30, 50.0) else 50.0
-            val weeklyMacdLine = if (d.length() > 31 && !d.isNull(31)) d.optDouble(31, 0.0) else 0.0
-            val weeklyMacdSignal = if (d.length() > 32 && !d.isNull(32)) d.optDouble(32, 0.0) else 0.0
-            val isWeeklyConfirmedBullish = (weeklyRsi > 50.0) && (weeklyMacdLine >= weeklyMacdSignal)
 
             val obvTrend = when {
                 volumeRatio >= 1.5 && chg > 0 -> "تجميع مؤسسي قوي وتدفق سيولة 🔥"
