@@ -376,7 +376,8 @@ class TradingViewScannerApi {
             "EMA20", "EMA50", "EMA200",
             "MACD.macd", "MACD.signal", "MACD.hist",
             "price_earnings_ttm", "price_book_fq", "earnings_per_share_basic_ttm",
-            "return_on_equity", "dividend_yield_recent"
+            "return_on_equity", "dividend_yield_recent",
+            "RSI|1W", "MACD.macd|1W", "MACD.signal|1W"
         )
 
         val payload = JSONObject().apply {
@@ -447,7 +448,8 @@ class TradingViewScannerApi {
             "EMA20", "EMA50", "EMA200",
             "MACD.macd", "MACD.signal", "MACD.hist",
             "price_earnings_ttm", "price_book_fq", "earnings_per_share_basic_ttm",
-            "return_on_equity", "dividend_yield_recent"
+            "return_on_equity", "dividend_yield_recent",
+            "RSI|1W", "MACD.macd|1W", "MACD.signal|1W"
         )
 
         // Attempt 1: Direct ticker match (EGX:SYMBOL)
@@ -665,11 +667,14 @@ class TradingViewScannerApi {
             // 3. Support Bounce (ارتداد حقيقي من الدعم):
             val isSupportBounce = (distToS1 in 0.0..1.8) && (chg in 0.0..4.0) && (rsi in 35.0..55.0) && (p >= s1) && (dailyTurnover >= 2_000_000)
 
-            // 4. Early Uptrend (بداية انطلاق صاعد مع مساحة للقمة السنوية):
+            // 4. Early Uptrend (بداية انطلاق صاعد مع مساحة للقمة السنوية + تأكيد أسبوعي حقيقي):
             val isEarlyUptrend = (upsideTo52wHigh >= 20.0) && (trendShort == "صاعد" || p >= sma20) &&
-                    (rsi in 44.0..65.0) && (chg > -0.5) && (perf1m > -10.0) && (dailyTurnover >= 2_500_000)
+                    (rsi in 44.0..65.0) && (chg > -0.5) && (perf1m > -10.0) && (dailyTurnover >= 2_500_000) &&
+                    (isWeeklyConfirmedBullish)
 
             // 5. Tomorrow Pick (مرشح الغد عالي الأمان لصفقة سريعة +2% إلى +5% - خاص بالمضارب السريع):
+            // أضيف فلتر التقلب لمنع اصطياد أسهم بلا حركة حقيقية ليوم الغد، وفلتر جودة الاختراق/الشموع
+            // لتفضيل الأسهم ذات الإغلاق القوي فعلاً بدل الاعتماد على السمارت سكور فقط.
             val isTomorrowPick = (dailyTurnover >= 5_000_000 || volume >= 500_000) &&
                     (smartScore >= 65) &&
                     (confGrade in listOf("A+", "A")) &&
@@ -678,8 +683,11 @@ class TradingViewScannerApi {
                     (chg in -1.5..4.5) &&
                     (rr >= 1.6) &&
                     (volatility >= 1.0) &&
-                    (candleStrength >= 0)
+                    (candleStrength >= 0) &&
+                    (isWeeklyConfirmedBullish)
 
+            // درجة ترتيب رقمية لمرشحي الغد (تجمع الزخم والسيولة وجودة الإغلاق وقوة الشموع)
+            // لترتيب الأسهم المتأهلة بدقة أعلى من الاعتماد على السمارت سكور فقط.
             val tomorrowScore = (
                 (smartScore * 0.45) +
                 (breakoutQuality.score * 0.25) +
@@ -702,6 +710,13 @@ class TradingViewScannerApi {
             val roe = if (d.length() > 28 && !d.isNull(28)) d.optDouble(28, 0.0) else null
             val divYield = if (d.length() > 29 && !d.isNull(29)) d.optDouble(29, 0.0).takeIf { it >= 0 } else null
 
+            // تأكيد إطار زمني أسبوعي حقيقي (مباشر من TradingView على الشارت الأسبوعي الفعلي،
+            // بدل محاكاته بمتوسط SMA50 اليومي كما كان سابقاً):
+            val weeklyRsi = if (d.length() > 30 && !d.isNull(30)) d.optDouble(30, 50.0) else 50.0
+            val weeklyMacdLine = if (d.length() > 31 && !d.isNull(31)) d.optDouble(31, 0.0) else 0.0
+            val weeklyMacdSignal = if (d.length() > 32 && !d.isNull(32)) d.optDouble(32, 0.0) else 0.0
+            val isWeeklyConfirmedBullish = (weeklyRsi > 50.0) && (weeklyMacdLine >= weeklyMacdSignal)
+
             val obvTrend = when {
                 volumeRatio >= 1.5 && chg > 0 -> "تجميع مؤسسي قوي وتدفق سيولة 🔥"
                 volumeRatio >= 1.0 && chg >= 0 -> "تدفق سيولة إيجابي مستقر 🌊"
@@ -722,6 +737,7 @@ class TradingViewScannerApi {
             )
 
             val screenerReasons = mutableListOf<String>()
+            if (isWeeklyConfirmedBullish) screenerReasons.add("📅 تأكيد أسبوعي حقيقي (RSI وMACD الأسبوعي إيجابيان)")
             if (isGoldenCross) screenerReasons.add("🌟 تقاطع ذهبي 50/200 يوم (إيجابي جداً)")
             if (trendLong == "صاعد") screenerReasons.add("📈 السعر أعلى من متوسط 200 يوم")
             if (upsideTo52wHigh >= 25.0) screenerReasons.add("🚀 مساحة صعود حتى القمة السنوية $upsideTo52wHigh%")
@@ -789,6 +805,8 @@ class TradingViewScannerApi {
                 isEarlyUptrend = isEarlyUptrend,
                 isTomorrowPick = isTomorrowPick,
                 tomorrowScore = tomorrowScore,
+                weeklyRsi = weeklyRsi,
+                isWeeklyConfirmedBullish = isWeeklyConfirmedBullish,
                 isShariahCompliant = EgyptianStockDirectory.isShariahCompliant(name),
                 indexBelonging = EgyptianStockDirectory.getIndexBelonging(name),
                 screenerReasons = screenerReasons,
