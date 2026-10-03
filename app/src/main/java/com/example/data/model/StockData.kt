@@ -74,6 +74,8 @@ data class StockData(
     val isEarlyUptrend: Boolean,
     val isTomorrowPick: Boolean,
     val tomorrowScore: Int = 0, // ترتيب دقيق لمرشحي المضاربة السريعة ليوم الغد (0-100)
+    val weeklyRsi: Double = 50.0, // RSI حقيقي على الفريم الأسبوعي من TradingView مباشرة
+    val isWeeklyConfirmedBullish: Boolean = true, // تأكيد حقيقي من الفريم الأسبوعي (RSI + MACD أسبوعي)
     val isShariahCompliant: Boolean = false,
     val indexBelonging: String = "EGX30",
     val screenerReasons: List<String>,
