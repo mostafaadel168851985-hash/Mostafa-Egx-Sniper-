@@ -132,7 +132,7 @@ fun HomeScreen(
                     .clickable { onNavigate(NavScreen.CORPORATE_NEWS) }
                     .testTag("banner_corporate_news"),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))
+                colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)
             ) {
                 Row(
                     modifier = Modifier
@@ -322,7 +322,7 @@ fun HomeScreen(
                     .clickable { onNavigate(NavScreen.PORTFOLIO_ALLOCATION) }
                     .testTag("card_portfolio_hub"),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF141F1A))
+                colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)
             ) {
                 Row(
                     modifier = Modifier
@@ -574,6 +574,7 @@ private fun QuickStatCard(
     Box(
         modifier = modifier
             .background(SurfaceDark, RoundedCornerShape(12.dp))
+            .border(1.dp, color.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
             .padding(10.dp)
     ) {
         Column {
@@ -605,6 +606,7 @@ private fun ShortcutCard(
     Box(
         modifier = modifier
             .background(SurfaceDark, RoundedCornerShape(12.dp))
+            .border(1.dp, OutlineDark, RoundedCornerShape(12.dp))
             .padding(10.dp)
     ) {
         Column {
