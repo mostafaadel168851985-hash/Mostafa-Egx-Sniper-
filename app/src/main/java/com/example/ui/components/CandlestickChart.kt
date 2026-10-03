@@ -449,7 +449,7 @@ private fun TechnicalIndicatorsAndNativeChart(
 
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = if (isMacdGoldenCross) "تقاطع إيجابي صاعد 🟢" else "تقاطع سلبي هابط 🔴",
+                            text = if (isMacdGoldenCross) "الماكد فوق خط الإشارة 🟢" else "الماكد تحت خط الإشارة 🔴",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isMacdGoldenCross) BullishGreen else BearishRed
