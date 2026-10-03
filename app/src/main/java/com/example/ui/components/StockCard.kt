@@ -239,6 +239,58 @@ fun StockCard(
                 }
             }
 
+            // Daily High/Low Visual Range Bar
+            if (stock.high > stock.low && stock.high > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val rangeProgress = ((stock.price - stock.low) / (stock.high - stock.low)).toFloat().coerceIn(0f, 1f)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceVariantDark.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "أدنى: ${stock.formattedLow} ج",
+                            fontSize = 10.sp,
+                            color = TextMuted
+                        )
+                        Text(
+                            text = "نطاق الجلسة (الحالي: ${stock.formattedPrice} ج)",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = changeColor
+                        )
+                        Text(
+                            text = "أعلى: ${stock.formattedHigh} ج",
+                            fontSize = 10.sp,
+                            color = TextMuted
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(5.dp)
+                            .background(SurfaceDark, RoundedCornerShape(3.dp))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(rangeProgress)
+                                .height(5.dp)
+                                .background(
+                                    if (isBullish) BullishGreen else GoldenAmber,
+                                    RoundedCornerShape(3.dp)
+                                )
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Indicator tags: 50 & 200 Days, Candlesticks, Upside

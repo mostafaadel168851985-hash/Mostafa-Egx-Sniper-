@@ -113,4 +113,10 @@ data class StockData(
 
     val stopLossFormatted: String
         get() = String.format(Locale.US, "%.3f", stopLoss)
+
+    val formattedHigh: String
+        get() = String.format(Locale.US, "%.3f", high)
+
+    val formattedLow: String
+        get() = String.format(Locale.US, "%.3f", low)
 }
