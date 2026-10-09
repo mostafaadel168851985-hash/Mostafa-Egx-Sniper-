@@ -210,10 +210,17 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            val breakoutsCount = uiState.allStocks.count { it.isRapidBreakout }
-            val correctionsCount = uiState.allStocks.count { it.isCorrectionHunter }
-            val earlyUptrendCount = uiState.allStocks.count { it.isEarlyUptrend }
-            val tomorrowPicksCount = minOf(5, uiState.allStocks.count { it.isTomorrowPick }.takeIf { it > 0 } ?: 5)
+            val tomorrowMinScore = when (uiState.marketStatus.trendDirection) {
+                com.example.data.model.TrendDirection.BULLISH -> 62
+                com.example.data.model.TrendDirection.CHOPPY -> 68
+                com.example.data.model.TrendDirection.BEARISH -> 76
+            }
+            val breakoutsCount = uiState.allStocks.count { it.isRapidBreakout && !it.isOfflineFallback }
+            val correctionsCount = uiState.allStocks.count { it.isCorrectionHunter && !it.isOfflineFallback }
+            val earlyUptrendCount = uiState.allStocks.count { it.isEarlyUptrend && !it.isOfflineFallback }
+            val tomorrowPicksCount = uiState.allStocks.count {
+                it.isTomorrowPick && it.tomorrowScore >= tomorrowMinScore && !it.isOfflineFallback
+            }.coerceAtMost(5)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

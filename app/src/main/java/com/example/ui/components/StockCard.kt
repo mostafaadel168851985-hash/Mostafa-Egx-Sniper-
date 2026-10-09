@@ -172,6 +172,33 @@ fun StockCard(
                         color = Color(stock.confidenceColorHex)
                     )
                 }
+
+                // Tomorrow Score Badge if eligible
+                if (stock.tomorrowScore >= 60) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(GoldenAmberBg, RoundedCornerShape(8.dp))
+                            .border(1.dp, GoldenAmber.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 7.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "${stock.tomorrowScore}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GoldenAmber
+                            )
+                            Text(
+                                text = "الغد 🎯",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldenAmber
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -354,7 +381,7 @@ fun StockCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF0F172A), RoundedCornerShape(8.dp))
+                    .background(SurfaceVariantDark, RoundedCornerShape(8.dp))
                     .border(1.dp, OutlineDark, RoundedCornerShape(8.dp))
                     .padding(8.dp)
             ) {

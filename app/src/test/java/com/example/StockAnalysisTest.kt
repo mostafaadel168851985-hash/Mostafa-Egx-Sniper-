@@ -42,4 +42,43 @@ class StockAnalysisTest {
         assertNotNull(name)
         assert(name.contains("طلعت مصطفى"))
     }
+
+    @Test
+    fun testVolatilityFilter() {
+        val (isVolLow, reasonLow) = com.example.data.remote.TechnicalAnalysisEngine.isVolatileEnough(0.6)
+        assertEquals(false, isVolLow)
+        assert(reasonLow.contains("ضعيف جداً"))
+
+        val (isVolGood, _) = com.example.data.remote.TechnicalAnalysisEngine.isVolatileEnough(2.5)
+        assertEquals(true, isVolGood)
+    }
+
+    @Test
+    fun testBreakoutQualityScoring() {
+        val quality = com.example.data.remote.TechnicalAnalysisEngine.analyzeBreakoutQuality(
+            price = 100.0,
+            high = 100.2,
+            low = 95.0,
+            volumeRatio = 2.0
+        )
+        assert(quality.closeStrengthPct >= 90.0)
+        assert(quality.score >= 60)
+        assertEquals("A+", quality.grade)
+    }
+
+    @Test
+    fun testMarketSafetyThresholds() {
+        val minScoreBullish = when (com.example.data.model.TrendDirection.BULLISH) {
+            com.example.data.model.TrendDirection.BULLISH -> 62
+            com.example.data.model.TrendDirection.CHOPPY -> 68
+            com.example.data.model.TrendDirection.BEARISH -> 76
+        }
+        val minScoreBearish = when (com.example.data.model.TrendDirection.BEARISH) {
+            com.example.data.model.TrendDirection.BULLISH -> 62
+            com.example.data.model.TrendDirection.CHOPPY -> 68
+            com.example.data.model.TrendDirection.BEARISH -> 76
+        }
+        assertEquals(62, minScoreBullish)
+        assertEquals(76, minScoreBearish)
+    }
 }

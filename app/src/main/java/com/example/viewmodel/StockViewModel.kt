@@ -10,6 +10,7 @@ import com.example.data.model.CorporateCategory
 import com.example.data.model.CorporateNews
 import com.example.data.model.MarketIndexStatus
 import com.example.data.model.StockData
+import com.example.data.model.TrendDirection
 import com.example.data.repository.StockRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -112,38 +113,38 @@ data class StockUiState(
                 list = list.filter { it.sector == selectedSector }
             }
 
+            // Dynamic minimum score threshold based on market direction
+            val tomorrowMinScore = when (marketStatus.trendDirection) {
+                TrendDirection.BULLISH -> 62
+                TrendDirection.CHOPPY -> 68
+                TrendDirection.BEARISH -> 76
+            }
+
             // Filter by screener strategy
             return when (activeScreenerFilter) {
                 ScreenerFilter.TOMORROW_PICKS -> {
-                    // Strict Elite 1-Day Safe Picks (At most 5 stocks for quick, safe 1-day trade):
-                    val candidates = list.filter { it.isTomorrowPick }
-                    val sortedCandidates = if (candidates.isNotEmpty()) {
-                        candidates.sortedWith(
-                            compareByDescending<StockData> { it.confidenceGrade == "A+" }
-                                .thenByDescending { it.tomorrowScore }
-                                .thenByDescending { it.dailyTurnover }
-                                .thenByDescending { it.riskRewardRatio }
-                        )
-                    } else {
-                        // Safe fallback: Top liquid stocks in EGX with healthy RSI & strong score
-                        list.filter { it.price > 0.0 && it.dailyTurnover >= 3_000_000 && it.rsi in 35.0..70.0 }
-                            .sortedWith(
-                                compareByDescending<StockData> { it.smartScore }
-                                    .thenByDescending { it.dailyTurnover }
-                                    .thenByDescending { it.riskRewardRatio }
-                            )
-                    }
-                    sortedCandidates.take(5)
+                    // Strict Elite 1-Day Safe Picks:
+                    // لا يوجد fallback لأسهم ضعيفة - إذا لم يحقق أي سهم الشروط الصارمة، لا نرشح شيئاً لحماية رأس المال
+                    list.filter {
+                        it.isTomorrowPick &&
+                        it.tomorrowScore >= tomorrowMinScore &&
+                        !it.isOfflineFallback
+                    }.sortedWith(
+                        compareByDescending<StockData> { it.confidenceGrade == "A+" }
+                            .thenByDescending { it.tomorrowScore }
+                            .thenByDescending { it.dailyTurnover }
+                            .thenByDescending { it.riskRewardRatio }
+                    ).take(5)
                 }
-                ScreenerFilter.SHARIAH -> list.filter { it.isShariahCompliant }
+                ScreenerFilter.SHARIAH -> list.filter { it.isShariahCompliant && !it.isOfflineFallback }
                     .sortedByDescending { it.smartScore }
-                ScreenerFilter.CORRECTIONS -> list.filter { it.isCorrectionHunter }
+                ScreenerFilter.CORRECTIONS -> list.filter { it.isCorrectionHunter && !it.isOfflineFallback }
                     .sortedByDescending { it.smartScore }
-                ScreenerFilter.BREAKOUTS -> list.filter { it.isRapidBreakout }
+                ScreenerFilter.BREAKOUTS -> list.filter { it.isRapidBreakout && !it.isOfflineFallback }
                     .sortedByDescending { it.breakoutQuality.score }
-                ScreenerFilter.SUPPORT_BOUNCE -> list.filter { it.isSupportBounce }
+                ScreenerFilter.SUPPORT_BOUNCE -> list.filter { it.isSupportBounce && !it.isOfflineFallback }
                     .sortedByDescending { it.smartScore }
-                ScreenerFilter.EARLY_UPTREND -> list.filter { it.isEarlyUptrend }
+                ScreenerFilter.EARLY_UPTREND -> list.filter { it.isEarlyUptrend && !it.isOfflineFallback }
                     .sortedByDescending { it.upsideTo52wHigh }
                 ScreenerFilter.ALL -> list.sortedByDescending { it.change }
             }

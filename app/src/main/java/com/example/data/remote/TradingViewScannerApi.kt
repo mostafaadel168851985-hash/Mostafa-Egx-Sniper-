@@ -653,6 +653,15 @@ class TradingViewScannerApi {
                 sma200 = sma200, r1 = r1, dailyTurnover = dailyTurnover, candleStrength = candleStrength
             )
 
+            // Advanced Technical Indicators (EMA 20/50/200, MACD)
+            val ema20 = round3(if (d.length() > 19 && !d.isNull(19)) d.optDouble(19, sma20) else sma20)
+            val ema50 = round3(if (d.length() > 20 && !d.isNull(20)) d.optDouble(20, sma50) else sma50)
+            val ema200 = round3(if (d.length() > 21 && !d.isNull(21)) d.optDouble(21, sma200) else sma200)
+
+            val macdLine = round3(if (d.length() > 22 && !d.isNull(22)) d.optDouble(22, 0.0) else 0.0)
+            val macdSignal = round3(if (d.length() > 23 && !d.isNull(23)) d.optDouble(23, 0.0) else 0.0)
+            val macdHist = round3(if (d.length() > 24 && !d.isNull(24)) d.optDouble(24, 0.0) else (macdLine - macdSignal))
+
             // Weekly Multi-Timeframe Confirmation (RSI 1W & MACD 1W from TradingView)
             val weeklyRsi = if (d.length() > 30 && !d.isNull(30)) d.optDouble(30, 50.0) else 50.0
             val weeklyMacdLine = if (d.length() > 31 && !d.isNull(31)) d.optDouble(31, 0.0) else 0.0
@@ -660,15 +669,17 @@ class TradingViewScannerApi {
             val isWeeklyConfirmedBullish = (weeklyRsi > 50.0) && (weeklyMacdLine >= weeklyMacdSignal)
 
             // Screener logic (Upgraded for high accuracy & reduced false signals):
-            // 1. Correction Hunter (اقتناص التصحيح في الاتجاه الصاعد):
             val distToS1 = if (s1 > 0) (p - s1) / s1 * 100.0 else 99.0
+            val distanceSma20 = if (sma20 > 0) ((p - sma20) / sma20) * 100.0 else 0.0
+
+            // 1. Correction Hunter (اقتناص التصحيح في الاتجاه الصاعد):
             val isCorrectionHunter = (trendLong == "صاعد" || p > sma200) &&
                     (rsi in 30.0..52.0) && (chg > -1.2) && (dailyTurnover >= 3_000_000) && (distToS1 <= 2.5)
 
-            // 2. Rapid Breakout (اختراق سريع قوي مع سيولة حقيقية وتقلب كافٍ يمنع الأسهم الميتة):
-            val isRapidBreakout = (rsi in 48.0..72.0) && (volumeRatio >= 1.25 || dailyTurnover >= 8_000_000) &&
-                    (p >= r1 * 0.97) && (breakoutQuality.score >= 50) && (trendShort == "صاعد") &&
-                    (volatility >= 1.0)
+            // 2. Rapid Breakout (اختراق سريع قوي مع سيولة حقيقية وإغلاق قوي قرب المقاومة):
+            val isRapidBreakout = (rsi in 48.0..72.0) && (volumeRatio >= 1.2 && dailyTurnover >= 5_000_000) &&
+                    (p >= r1 * 0.985) && (breakoutQuality.score >= 55) && (breakoutQuality.closeStrengthPct >= 65.0) &&
+                    (trendShort == "صاعد") && (volatility in 1.0..8.0)
 
             // 3. Support Bounce (ارتداد حقيقي من الدعم):
             val isSupportBounce = (distToS1 in 0.0..1.8) && (chg in 0.0..4.0) && (rsi in 35.0..55.0) && (p >= s1) && (dailyTurnover >= 2_000_000)
@@ -678,37 +689,32 @@ class TradingViewScannerApi {
                     (rsi in 44.0..65.0) && (chg > -0.5) && (perf1m > -10.0) && (dailyTurnover >= 2_500_000) &&
                     (isWeeklyConfirmedBullish)
 
-            // 5. Tomorrow Pick (مرشح الغد عالي الأمان لصفقة سريعة +2% إلى +5% - خاص بالمضارب السريع):
-            // أضيف فلتر التقلب لمنع اصطياد أسهم بلا حركة حقيقية ليوم الغد، وفلتر جودة الاختراق/الشموع
-            // لتفضيل الأسهم ذات الإغلاق القوي فعلاً بدل الاعتماد على السمارت سكور فقط.
-            val isTomorrowPick = (dailyTurnover >= 5_000_000 || volume >= 500_000) &&
-                    (smartScore >= 65) &&
+            // 5. Tomorrow Pick (مرشح الغد عالي الأمان لصفقة سريعة +2% إلى +5% - شروط إلزامية صارمة لمنع التورط):
+            // سيولة حقيقية ≥ 5 مليون ج وحجم ≥ 0.9 من المتوسط، إغلاق موجب 0 إلى +4.5% وقوي قرب القمة،
+            // فوق SMA20 و SMA50، RSI متوازن 42-68، غير متضخم (أقل من 8% فوق SMA20)، وتأكيد أسبوعي.
+            val isTomorrowPick = (dailyTurnover >= 5_000_000) &&
+                    (volumeRatio >= 0.9) &&
+                    (chg in 0.0..4.5) &&
+                    (breakoutQuality.closeStrengthPct >= 60.0) &&
+                    (p >= sma20 && p >= sma50) &&
+                    (rsi in 42.0..68.0) &&
+                    (distanceSma20 in 0.0..8.0) &&
+                    (volatility in 1.0..8.0) &&
                     (confGrade in listOf("A+", "A")) &&
-                    (rsi in 40.0..68.0) &&
-                    (trendShort == "صاعد" || p >= sma20) &&
-                    (chg in -1.5..4.5) &&
-                    (rr >= 1.6) &&
-                    (volatility >= 1.0) &&
-                    (candleStrength >= 0) &&
+                    (rr >= 1.5) &&
                     (isWeeklyConfirmedBullish)
 
-            // درجة ترتيب رقمية لمرشحي الغد (تجمع الزخم والسيولة وجودة الإغلاق وقوة الشموع)
-            // لترتيب الأسهم المتأهلة بدقة أعلى من الاعتماد على السمارت سكور فقط.
+            // درجة ترتيب رقمية دقيقة لمرشحي الغد تخصم من الأسهم المتضخمة وتجمع الزخم والسيولة
+            val scoreSmart = (smartScore.coerceIn(0, 100) * 0.35)
+            val scoreClose = (breakoutQuality.score.coerceIn(0, 100) * 0.25)
+            val scoreVolume = (min(100.0, volumeRatio * 40.0) * 0.15)
+            val scoreMacd = if (macdHist >= 0) 10.0 else 0.0
+            val scoreWeekly = if (isWeeklyConfirmedBullish) 10.0 else 0.0
+            val overextensionPenalty = if (distanceSma20 > 6.0) (distanceSma20 - 6.0) * 2.5 else 0.0
+
             val tomorrowScore = (
-                (smartScore * 0.45) +
-                (breakoutQuality.score * 0.25) +
-                (min(100.0, volumeRatio * 40.0) * 0.15) +
-                (min(100.0, max(0.0, (candleStrength + 2) * 20.0)) * 0.15)
+                scoreSmart + scoreClose + scoreVolume + scoreMacd + scoreWeekly - overextensionPenalty
             ).roundToInt().coerceIn(0, 100)
-
-            // Advanced Technical Indicators (EMA 20/50/200, MACD, OBV)
-            val ema20 = round3(if (d.length() > 19 && !d.isNull(19)) d.optDouble(19, sma20) else sma20)
-            val ema50 = round3(if (d.length() > 20 && !d.isNull(20)) d.optDouble(20, sma50) else sma50)
-            val ema200 = round3(if (d.length() > 21 && !d.isNull(21)) d.optDouble(21, sma200) else sma200)
-
-            val macdLine = round3(if (d.length() > 22 && !d.isNull(22)) d.optDouble(22, 0.0) else 0.0)
-            val macdSignal = round3(if (d.length() > 23 && !d.isNull(23)) d.optDouble(23, 0.0) else 0.0)
-            val macdHist = round3(if (d.length() > 24 && !d.isNull(24)) d.optDouble(24, 0.0) else (macdLine - macdSignal))
 
             val pe = if (d.length() > 25 && !d.isNull(25)) d.optDouble(25, 0.0).takeIf { it > 0 } else null
             val pb = if (d.length() > 26 && !d.isNull(26)) d.optDouble(26, 0.0).takeIf { it > 0 } else null
@@ -852,7 +858,12 @@ class TradingViewScannerApi {
                 raw.sma20, raw.sma50, raw.sma200, raw.open,
                 raw.high52, raw.low52, raw.perf1m
             ))
-            parseStockRow(jsonArray, multiplier)
+            parseStockRow(jsonArray, multiplier)?.copy(
+                isOfflineFallback = true,
+                isTomorrowPick = false,
+                isRapidBreakout = false,
+                tomorrowScore = 0
+            )
         }
     }
 

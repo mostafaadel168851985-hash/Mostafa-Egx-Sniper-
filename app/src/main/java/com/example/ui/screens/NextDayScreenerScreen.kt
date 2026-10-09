@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -40,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.StockData
@@ -137,6 +140,35 @@ fun NextDayScreenerScreen(
                         fontSize = 12.sp,
                         color = TextSecondary
                     )
+                }
+            }
+        }
+
+        // Offline Fallback Alert Banner
+        if (uiState.allStocks.any { it.isOfflineFallback }) {
+            item {
+                Spacer(modifier = Modifier.height(10.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = GoldenAmber.copy(alpha = 0.15f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldenAmber.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Warning, contentDescription = null, tint = GoldenAmber, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "⚠️ تنبيه: تعذر جلب الأسعار اللحظية. يتم عرض بيانات استرشادية أوفلاين وتم إيقاف ترشيحات الدخول الحية تلقائياً لسلامة قراراتك.",
+                            fontSize = 11.sp,
+                            color = TextPrimary,
+                            lineHeight = 16.sp
+                        )
+                    }
                 }
             }
         }
@@ -272,33 +304,66 @@ fun NextDayScreenerScreen(
         // Results List
         if (uiState.filteredStocks.isEmpty()) {
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 30.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "لا توجد أسهم مطابقة للفلتر في هذا القطاع حالياً",
-                            fontSize = 14.sp,
-                            color = TextMuted
-                        )
-                        if (uiState.searchQuery.isNotBlank() && onNavigateToAnalyze != null) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = { onNavigateToAnalyze(uiState.searchQuery) },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentCyan),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Icon(Icons.Default.QueryStats, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "استخراج كارت تحليل شامل لسهم \"${uiState.searchQuery}\"",
-                                    color = Color.Black,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
+                if (uiState.activeScreenerFilter == ScreenerFilter.TOMORROW_PICKS) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = GoldenAmber.copy(alpha = 0.12f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldenAmber.copy(alpha = 0.4f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.Shield, contentDescription = null, tint = GoldenAmber, modifier = Modifier.size(36.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "🛡️ الأفضل عدم الدخول اليوم والاحتفاظ بالكاش",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldenAmber
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "لم يحقق أي سهم معايير الأمان الإلزامية الصارمة لجلسة الغد في ظل وضع السوق الحالي. في التداول الاحترافي، حماية رأس المال والانتظار هما صفقة ناجحة بحد ذاتها.",
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 30.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "لا توجد أسهم مطابقة للفلتر في هذا القطاع حالياً",
+                                fontSize = 14.sp,
+                                color = TextMuted
+                            )
+                            if (uiState.searchQuery.isNotBlank() && onNavigateToAnalyze != null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(
+                                    onClick = { onNavigateToAnalyze(uiState.searchQuery) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = AccentCyan),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.QueryStats, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "استخراج كارت تحليل شامل لسهم \"${uiState.searchQuery}\"",
+                                        color = Color.Black,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -323,7 +388,7 @@ fun NextDayScreenerScreen(
                         ) {
                             Text(
                                 text = when (index) {
-                                    0 -> "🥇 الاختيار #1 (الأعلى أماناً وسيولة)"
+                                    0 -> "🥇 الاختيار #1 (الأعلى سكوراً وسيولة)"
                                     1 -> "🥈 الاختيار #2 (زخم ارتدادي قوي)"
                                     2 -> "🥉 الاختيار #3 (اختراق محسوب)"
                                     3 -> "🏅 الاختيار #4 (دعم رئيسي)"
@@ -338,7 +403,7 @@ fun NextDayScreenerScreen(
                                 }
                             )
                             Text(
-                                text = "هدف اليوم: +2.5% إلى +5% | وقف: -1.8%",
+                                text = "هدف: +${stock.targetPct}% (${stock.target1Formatted} ج) | وقف: -${stock.riskPct}% (${stock.stopLossFormatted} ج)",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = TextSecondary
