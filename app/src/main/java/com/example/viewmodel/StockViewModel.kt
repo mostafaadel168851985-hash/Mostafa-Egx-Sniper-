@@ -124,8 +124,7 @@ data class StockUiState(
             return when (activeScreenerFilter) {
                 ScreenerFilter.TOMORROW_PICKS -> {
                     // Strict Elite 1-Day Safe Picks:
-                    // لا يوجد fallback لأسهم ضعيفة - إذا لم يحقق أي سهم الشروط الصارمة، لا نرشح شيئاً لحماية رأس المال
-                    list.filter {
+                    val strictPicks = list.filter {
                         it.isTomorrowPick &&
                         it.tomorrowScore >= tomorrowMinScore &&
                         !it.isOfflineFallback
@@ -135,6 +134,21 @@ data class StockUiState(
                             .thenByDescending { it.dailyTurnover }
                             .thenByDescending { it.riskRewardRatio }
                     ).take(5)
+
+                    // إذا وُجدت أسهم تحقق الشروط الصارمة، يتم عرضها مباشرة:
+                    if (strictPicks.isNotEmpty()) {
+                        strictPicks
+                    } else {
+                        // قائمة مراقبة تظهر تلقائياً لما مفيش مرشح صارم (أفضل 5 أسهم مرتبة بالدرجة بعد الخصم):
+                        list.filter {
+                            it.isTomorrowWatchlistEligible &&
+                            !it.isOfflineFallback
+                        }.sortedWith(
+                            compareByDescending<StockData> { it.tomorrowWatchlistScore }
+                                .thenByDescending { it.dailyTurnover }
+                                .thenByDescending { it.smartScore }
+                        ).take(5)
+                    }
                 }
                 ScreenerFilter.SHARIAH -> list.filter { it.isShariahCompliant && !it.isOfflineFallback }
                     .sortedByDescending { it.smartScore }

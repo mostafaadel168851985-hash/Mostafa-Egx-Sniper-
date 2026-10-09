@@ -92,7 +92,12 @@ data class StockData(
     val obvTrend: String = "تجميع هادئ 🌊",
 
     // Comprehensive Fundamental & Financial Analysis
-    val financialMetrics: FinancialMetrics? = null
+    val financialMetrics: FinancialMetrics? = null,
+
+    // Tomorrow Screener Rejection Diagnostics & Watchlist
+    val tomorrowDisqualificationReasons: List<String> = emptyList(),
+    val tomorrowWatchlistScore: Int = 0,
+    val isTomorrowWatchlistEligible: Boolean = false
 ) {
     val formattedPrice: String
         get() = String.format(Locale.US, "%.3f", price)

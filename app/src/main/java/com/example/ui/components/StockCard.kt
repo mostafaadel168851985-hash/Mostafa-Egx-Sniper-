@@ -376,6 +376,33 @@ fun StockCard(
                 }
             }
 
+            // أسباب عدم التأهل لصفقة الغد بالأرقام (إذا وجدت في حالة عدم التأهل الكامل أو قائمة المراقبة)
+            if (stock.tomorrowDisqualificationReasons.isNotEmpty() && !stock.isTomorrowPick) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(GoldenAmber.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                        .border(1.dp, GoldenAmber.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "⚠️ سبب الاستبعاد من صفوة الغد الصارمة:",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldenAmber
+                    )
+                    stock.tomorrowDisqualificationReasons.take(2).forEach { reason ->
+                        Text(
+                            text = "• $reason",
+                            fontSize = 10.sp,
+                            color = TextSecondary,
+                            lineHeight = 14.sp
+                        )
+                    }
+                }
+            }
+
             // Ideal Entry & Exit Box with Dual Target & Trailing Stop Guidance
             Spacer(modifier = Modifier.height(8.dp))
             Column(

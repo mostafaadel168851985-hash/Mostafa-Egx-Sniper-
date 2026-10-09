@@ -689,9 +689,61 @@ class TradingViewScannerApi {
                     (rsi in 44.0..65.0) && (chg > -0.5) && (perf1m > -10.0) && (dailyTurnover >= 2_500_000) &&
                     (isWeeklyConfirmedBullish)
 
-            // 5. Tomorrow Pick (مرشح الغد عالي الأمان لصفقة سريعة +2% إلى +5% - شروط إلزامية صارمة لمنع التورط):
-            // سيولة حقيقية ≥ 5 مليون ج وحجم ≥ 0.9 من المتوسط، إغلاق موجب 0 إلى +4.5% وقوي قرب القمة،
-            // فوق SMA20 و SMA50، RSI متوازن 42-68، غير متضخم (أقل من 8% فوق SMA20)، وتأكيد أسبوعي.
+            // 5. Tomorrow Pick Diagnosis (تشخيص أسباب الاستبعاد بالأرقام الدقيقة):
+            val tomorrowDisqualifications = mutableListOf<String>()
+            
+            // تحقق من الارتفاع اليومي
+            if (chg > 4.5) {
+                tomorrowDisqualifications.add("ارتفع ${String.format(java.util.Locale.US, "%.1f", chg)}% اليوم - خطر جني أرباح")
+            } else if (chg < 0.0) {
+                tomorrowDisqualifications.add("إغلاق سلبي (${String.format(java.util.Locale.US, "%.1f", chg)}%) - ضعف نسبي")
+            }
+
+            // تحقق من التضخم فوق SMA20
+            if (distanceSma20 > 8.0) {
+                tomorrowDisqualifications.add("متضخم: ${String.format(java.util.Locale.US, "%.1f", distanceSma20)}% فوق SMA20")
+            } else if (distanceSma20 < 0.0 && p < sma20) {
+                tomorrowDisqualifications.add("السعر دون متوسط 20 يوم (SMA20)")
+            }
+
+            // تحقق من SMA50
+            if (sma50 > 0 && p < sma50) {
+                tomorrowDisqualifications.add("السعر دون متوسط 50 يوم (SMA50)")
+            }
+
+            // تحقق من السيولة وحجم التداول
+            if (dailyTurnover < 5_000_000) {
+                tomorrowDisqualifications.add("سيولة يومية ضعيفة (${String.format(java.util.Locale.US, "%.1f", dailyTurnover / 1_000_000.0)} م.ج < 5 م.ج)")
+            }
+            if (volumeRatio < 0.9) {
+                tomorrowDisqualifications.add("حجم التداول أقل من المعتاد (${String.format(java.util.Locale.US, "%.2f", volumeRatio)}x من المتوسط)")
+            }
+
+            // قوة الإغلاق وموقع السعر في الشمعة
+            if (breakoutQuality.closeStrengthPct < 60.0) {
+                tomorrowDisqualifications.add("إغلاق متراجع عن قمة اليوم (قوة الإغلاق ${breakoutQuality.closeStrengthPct.toInt()}% < 60%)")
+            }
+
+            // مؤشر RSI
+            if (rsi > 68.0) {
+                tomorrowDisqualifications.add("تشبع شرائي مفرط (RSI ${String.format(java.util.Locale.US, "%.1f", rsi)} > 68)")
+            } else if (rsi < 42.0) {
+                tomorrowDisqualifications.add("زخم ضعيف (RSI ${String.format(java.util.Locale.US, "%.1f", rsi)} < 42)")
+            }
+
+            // التأكيد الأسبوعي
+            if (!isWeeklyConfirmedBullish) {
+                tomorrowDisqualifications.add("غياب التأكيد الأسبوعي (الاتجاه الأسبوعي غير داعم)")
+            }
+
+            // نسبة العائد للمخاطرة وجودة الثقة
+            if (rr < 1.5) {
+                tomorrowDisqualifications.add("نسبة عائد لمخاطرة منخفضة (${String.format(java.util.Locale.US, "%.1f", rr)} < 1.5)")
+            }
+            if (confGrade !in listOf("A+", "A")) {
+                tomorrowDisqualifications.add("درجة توافق المؤشرات غير مكتملة (درجة ${confGrade})")
+            }
+
             val isTomorrowPick = (dailyTurnover >= 5_000_000) &&
                     (volumeRatio >= 0.9) &&
                     (chg in 0.0..4.5) &&
@@ -715,6 +767,19 @@ class TradingViewScannerApi {
             val tomorrowScore = (
                 scoreSmart + scoreClose + scoreVolume + scoreMacd + scoreWeekly - overextensionPenalty
             ).roundToInt().coerceIn(0, 100)
+
+            // قائمة المراقبة البديلة (Alternative Watchlist when tomorrow picks = 0):
+            // الشروط: سيولة ≥ 5 مليون ج، فوق SMA20 و SMA50، مقفول بالموجب (chg > 0)، مؤكد أسبوعياً،
+            // فاشل في شرطين على الأكثر من باقي الشروط الصارمة، مع خصم 8 نقاط عن كل شرط فاشل.
+            val failedConditionsCount = tomorrowDisqualifications.size
+            val isTomorrowWatchlistEligible = (dailyTurnover >= 5_000_000) &&
+                    (p >= sma20 && p >= sma50) &&
+                    (chg > 0.0) &&
+                    (isWeeklyConfirmedBullish) &&
+                    (!isTomorrowPick) &&
+                    (failedConditionsCount in 1..2)
+
+            val tomorrowWatchlistScore = (tomorrowScore - (failedConditionsCount * 8)).coerceIn(0, 100)
 
             val pe = if (d.length() > 25 && !d.isNull(25)) d.optDouble(25, 0.0).takeIf { it > 0 } else null
             val pb = if (d.length() > 26 && !d.isNull(26)) d.optDouble(26, 0.0).takeIf { it > 0 } else null
@@ -823,7 +888,10 @@ class TradingViewScannerApi {
                 macdSignal = macdSignal,
                 macdHist = macdHist,
                 obvTrend = obvTrend,
-                financialMetrics = financialMetrics
+                financialMetrics = financialMetrics,
+                tomorrowDisqualificationReasons = tomorrowDisqualifications,
+                tomorrowWatchlistScore = tomorrowWatchlistScore,
+                isTomorrowWatchlistEligible = isTomorrowWatchlistEligible
             )
         } catch (_: Exception) {
             return null
@@ -862,7 +930,9 @@ class TradingViewScannerApi {
                 isOfflineFallback = true,
                 isTomorrowPick = false,
                 isRapidBreakout = false,
-                tomorrowScore = 0
+                tomorrowScore = 0,
+                isTomorrowWatchlistEligible = false,
+                tomorrowWatchlistScore = 0
             )
         }
     }

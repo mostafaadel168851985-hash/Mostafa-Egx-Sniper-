@@ -372,42 +372,64 @@ fun NextDayScreenerScreen(
         } else {
             itemsIndexed(uiState.filteredStocks, key = { _, stock -> stock.symbol }) { index, stock ->
                 if (uiState.activeScreenerFilter == ScreenerFilter.TOMORROW_PICKS) {
+                    val isWatchlistMode = !stock.isTomorrowPick && stock.isTomorrowWatchlistEligible
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = if (index == 0) 4.dp else 10.dp, bottom = 2.dp),
                         shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isWatchlistMode) GoldenAmber.copy(alpha = 0.15f) else SurfaceVariantDark
+                        ),
+                        border = if (isWatchlistMode) androidx.compose.foundation.BorderStroke(1.dp, GoldenAmber.copy(alpha = 0.4f)) else null
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = when (index) {
-                                    0 -> "🥇 الاختيار #1 (الأعلى سكوراً وسيولة)"
-                                    1 -> "🥈 الاختيار #2 (زخم ارتدادي قوي)"
-                                    2 -> "🥉 الاختيار #3 (اختراق محسوب)"
-                                    3 -> "🏅 الاختيار #4 (دعم رئيسي)"
-                                    else -> "🏅 الاختيار #5 (فرصة سوينغ)"
-                                },
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = when (index) {
-                                    0 -> GoldenAmber
-                                    1 -> AccentCyan
-                                    else -> BullishGreen
-                                }
-                            )
-                            Text(
-                                text = "هدف: +${stock.targetPct}% (${stock.target1Formatted} ج) | وقف: -${stock.riskPct}% (${stock.stopLossFormatted} ج)",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextSecondary
-                            )
+                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (isWatchlistMode) {
+                                        when (index) {
+                                            0 -> "📋 مراقبة بديلة #1 (الدرجة: ${stock.tomorrowWatchlistScore}/100)"
+                                            1 -> "📋 مراقبة بديلة #2 (الدرجة: ${stock.tomorrowWatchlistScore}/100)"
+                                            2 -> "📋 مراقبة بديلة #3 (الدرجة: ${stock.tomorrowWatchlistScore}/100)"
+                                            3 -> "📋 مراقبة بديلة #4 (الدرجة: ${stock.tomorrowWatchlistScore}/100)"
+                                            else -> "📋 مراقبة بديلة #5 (الدرجة: ${stock.tomorrowWatchlistScore}/100)"
+                                        }
+                                    } else {
+                                        when (index) {
+                                            0 -> "🥇 الاختيار #1 (الأعلى سكوراً وسيولة)"
+                                            1 -> "🥈 الاختيار #2 (زخم ارتدادي قوي)"
+                                            2 -> "🥉 الاختيار #3 (اختراق محسوب)"
+                                            3 -> "🏅 الاختيار #4 (دعم رئيسي)"
+                                            else -> "🏅 الاختيار #5 (فرصة سوينغ)"
+                                        }
+                                    },
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isWatchlistMode) GoldenAmber else when (index) {
+                                        0 -> GoldenAmber
+                                        1 -> AccentCyan
+                                        else -> BullishGreen
+                                    }
+                                )
+                                Text(
+                                    text = "هدف: +${stock.targetPct}% (${stock.target1Formatted} ج) | وقف: -${stock.riskPct}% (${stock.stopLossFormatted} ج)",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextSecondary
+                                )
+                            }
+                            if (isWatchlistMode) {
+                                Text(
+                                    text = "⚠️ قائمة مراقبة (أفضل المتاحين) وليست شراء مباشر • انتظر تأكيد السيولة أو تراجع نحو SMA20",
+                                    fontSize = 9.sp,
+                                    color = GoldenAmber,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }

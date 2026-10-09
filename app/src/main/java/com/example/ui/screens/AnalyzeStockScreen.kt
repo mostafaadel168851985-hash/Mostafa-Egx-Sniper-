@@ -382,6 +382,56 @@ fun AnalyzeStockScreen(
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
+
+                        // عرض درجة الغد وأسباب الاستبعاد أو التأهل بالأرقام الحقيقية
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(SurfaceVariantDark, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "🎯 درجة الغد: ${stock.tomorrowScore}/100",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (stock.isTomorrowPick) BullishGreen else if (stock.tomorrowScore >= 60) GoldenAmber else TextMuted
+                            )
+                            Text(
+                                text = if (stock.isTomorrowPick) "✅ مؤهل كمرشح غد آمن" else "⚠️ غير متأهل لصفوة الغد",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (stock.isTomorrowPick) BullishGreen else TextMuted
+                            )
+                        }
+
+                        if (stock.tomorrowDisqualificationReasons.isNotEmpty() && !stock.isTomorrowPick) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "🔍 أسباب عدم التأهل لصفقة الغد بالأرقام:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldenAmber
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(SurfaceVariantDark.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                    .padding(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                stock.tomorrowDisqualificationReasons.forEach { reason ->
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(text = "• ", color = GoldenAmber, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(text = reason, fontSize = 11.sp, color = TextPrimary)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)

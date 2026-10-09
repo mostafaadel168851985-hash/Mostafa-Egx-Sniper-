@@ -218,18 +218,25 @@ fun HomeScreen(
             val breakoutsCount = uiState.allStocks.count { it.isRapidBreakout && !it.isOfflineFallback }
             val correctionsCount = uiState.allStocks.count { it.isCorrectionHunter && !it.isOfflineFallback }
             val earlyUptrendCount = uiState.allStocks.count { it.isEarlyUptrend && !it.isOfflineFallback }
-            val tomorrowPicksCount = uiState.allStocks.count {
+            val strictTomorrowCount = uiState.allStocks.count {
                 it.isTomorrowPick && it.tomorrowScore >= tomorrowMinScore && !it.isOfflineFallback
             }.coerceAtMost(5)
+            val watchlistTomorrowCount = if (strictTomorrowCount == 0) {
+                uiState.allStocks.count {
+                    it.isTomorrowWatchlistEligible && !it.isOfflineFallback
+                }.coerceAtMost(5)
+            } else 0
+            val tomorrowDisplayCount = if (strictTomorrowCount > 0) "$strictTomorrowCount" else if (watchlistTomorrowCount > 0) "$watchlistTomorrowCount (مراقبة)" else "0"
+            val tomorrowDisplayColor = if (strictTomorrowCount > 0) BullishGreen else if (watchlistTomorrowCount > 0) GoldenAmber else BullishGreen
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 QuickStatCard(
-                    title = "صفوة الغد (Top 5)",
-                    count = "$tomorrowPicksCount",
-                    color = BullishGreen,
+                    title = if (strictTomorrowCount > 0) "صفوة الغد (Top 5)" else if (watchlistTomorrowCount > 0) "مراقبة الغد (بديل)" else "صفوة الغد (Top 5)",
+                    count = tomorrowDisplayCount,
+                    color = tomorrowDisplayColor,
                     modifier = Modifier
                         .weight(1f)
                         .clickable {
